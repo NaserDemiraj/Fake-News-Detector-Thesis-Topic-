@@ -1,0 +1,420 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Veracity Protocol Design System */
+
+@layer base {
+  :root {
+    /* Veracity Protocol - Light Theme */
+    /* Surfaces */
+    --surface: #f7f9fb;
+    --surface-dim: #d8dadc;
+    --surface-bright: #f7f9fb;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f2f4f6;
+    --surface-container: #eceef0;
+    --surface-container-high: #e6e8ea;
+    --surface-container-highest: #e0e3e5;
+    
+    /* Text colors */
+    --on-surface: #191c1e;
+    --on-surface-variant: #45464d;
+    
+    /* Primary: Deep Slate/Black */
+    --primary: #000000;
+    --on-primary: #ffffff;
+    --primary-container: #131b2e;
+    --on-primary-container: #7c839b;
+    
+    /* Secondary: Trust Blue */
+    --secondary: #115cb9;
+    --on-secondary: #ffffff;
+    --secondary-container: #659dfe;
+    --on-secondary-container: #003370;
+    
+    /* Tertiary: Sage Green */
+    --tertiary: #022100;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #022100;
+    --on-tertiary-container: #648f55;
+    
+    /* Error/Status */
+    --error: #ba1a1a;
+    --on-error: #ffffff;
+    --error-container: #ffdad6;
+    --on-error-container: #93000a;
+    
+    /* Outline */
+    --outline: #76777d;
+    --outline-variant: #c6c6cd;
+    
+    /* UI Colors for backwards compatibility */
+    --background: #f7f9fb;
+    --foreground: #191c1e;
+    --card: #ffffff;
+    --card-foreground: #191c1e;
+    --popover: #ffffff;
+    --popover-foreground: #191c1e;
+    --border: #e0e3e5;
+    --input: #f2f4f6;
+    --ring: #115cb9;
+    --radius: 0.5rem;
+    --destructive: #ba1a1a;
+    --destructive-foreground: #ffffff;
+    
+    /* Typography */
+    --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-family-mono: 'JetBrains Mono', monospace;
+    
+    /* Shadows - Veracity Protocol spec shadows */
+    --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 20px rgba(15, 23, 42, 0.05);
+    --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.08);
+    --shadow-xl: 0 12px 48px rgba(15, 23, 42, 0.1);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    background-color: var(--surface);
+    color: var(--on-surface);
+    font-family: var(--font-family-sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  h1 {
+    font-family: var(--font-family-sans);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--on-surface);
+  }
+
+  h2 {
+    font-family: var(--font-family-sans);
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--on-surface);
+  }
+
+  h3 {
+    font-family: var(--font-family-sans);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--on-surface);
+  }
+
+  h4 {
+    font-family: var(--font-family-sans);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--on-surface);
+  }
+
+  p {
+    font-family: var(--font-family-sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--on-surface);
+  }
+
+  code, kbd, samp {
+    font-family: var(--font-family-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Card styling - Veracity Protocol soft shadows */
+  .card {
+    background-color: var(--surface-container-lowest);
+    border: 1px solid var(--surface-container-high);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+    border-color: var(--secondary);
+    transform: translateY(-1px);
+  }
+
+  /* Buttons - Veracity Protocol */
+  button {
+    font-family: var(--font-family-sans);
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 rounded font-medium transition-all;
+    background-color: var(--primary);
+    color: var(--on-primary);
+    border: none;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  }
+
+  .btn-primary:hover {
+    background-color: #1a1a1a;
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded font-medium transition-all;
+    background-color: transparent;
+    color: var(--secondary);
+    border: 1.5px solid var(--secondary);
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(17, 92, 185, 0.08);
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Input styling */
+  input,
+  textarea {
+    background-color: var(--surface-container-low);
+    border: 1px solid var(--surface-container-high);
+    color: var(--on-surface);
+    border-radius: 0.5rem;
+    font-family: var(--font-family-sans);
+    transition: all 0.2s ease;
+  }
+
+  input:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(17, 92, 185, 0.1);
+    background-color: var(--surface-container-lowest);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--on-surface-variant);
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  }
+
+  /* Status badges */
+  .badge-verified {
+    background-color: rgba(2, 138, 2, 0.1);
+    color: #028a02;
+    border: 1px solid rgba(2, 138, 2, 0.3);
+    border-radius: 9999px;
+  }
+
+  .badge-warning {
+    background-color: rgba(244, 160, 61, 0.1);
+    color: #f4a03d;
+    border: 1px solid rgba(244, 160, 61, 0.3);
+    border-radius: 9999px;
+  }
+
+  .badge-unverified {
+    background-color: rgba(186, 26, 26, 0.1);
+    color: #ba1a1a;
+    border: 1px solid rgba(186, 26, 26, 0.3);
+    border-radius: 9999px;
+  }
+
+  /* Smooth transitions */
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  /* 8px spacing scale - Veracity Protocol */
+  .spacing-xs {
+    gap: 8px;
+  }
+
+  .spacing-sm {
+    gap: 16px;
+  }
+
+  .spacing-md {
+    gap: 24px;
+  }
+
+  .spacing-lg {
+    gap: 32px;
+  }
+
+  .spacing-xl {
+    gap: 40px;
+  }
+
+  .spacing-2xl {
+    gap: 64px;
+  }
+
+  /* Typography utilities */
+  .text-display-lg {
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .text-headline-lg {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  .text-headline-md {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .text-body-lg {
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  .text-body-md {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  .text-label-md {
+    font-family: var(--font-family-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  .text-label-sm {
+    font-family: var(--font-family-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  /* Shadow utilities */
+  .shadow-soft-sm {
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+  }
+
+  .shadow-soft-md {
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  }
+
+  .shadow-soft-xl {
+    box-shadow: 0 12px 48px rgba(15, 23, 42, 0.1);
+  }
+
+  /* Color utilities - Veracity Protocol palette */
+  .text-on-surface {
+    color: var(--on-surface);
+  }
+
+  .text-on-surface-variant {
+    color: var(--on-surface-variant);
+  }
+
+  .text-primary {
+    color: var(--primary);
+  }
+
+  .text-secondary {
+    color: var(--secondary);
+  }
+
+  .text-tertiary {
+    color: var(--tertiary);
+  }
+
+  .bg-surface-light {
+    background-color: var(--surface-container-low);
+  }
+
+  .bg-surface-lighter {
+    background-color: var(--surface-container-highest);
+  }
+
+  .border-primary {
+    border-color: var(--primary);
+  }
+
+  .border-secondary {
+    border-color: var(--secondary);
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  }
+
+  /* Focus states */
+  .focus-ring:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(17, 92, 185, 0.1);
+  }
+}
+
+/* Scrollbar styling for light theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-container-low);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-dim);
+}

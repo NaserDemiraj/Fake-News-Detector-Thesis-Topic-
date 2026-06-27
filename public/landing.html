@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TruthLens AI | Precision Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary-fixed": "#001b3f",
+                "on-error": "#690005",
+                "primary-fixed": "#d7e2ff",
+                "surface-variant": "#333535",
+                "on-primary-fixed-variant": "#004590",
+                "on-surface-variant": "#c1c6d7",
+                "on-tertiary-fixed-variant": "#004f4f",
+                "inverse-on-surface": "#2f3131",
+                "outline": "#8b91a0",
+                "secondary-fixed": "#e0e0ff",
+                "on-background": "#e2e2e2",
+                "background": "#121414",
+                "tertiary": "#00dddd",
+                "on-secondary-fixed-variant": "#3239a3",
+                "surface-dim": "#121414",
+                "surface-bright": "#37393a",
+                "secondary-fixed-dim": "#bfc2ff",
+                "secondary": "#bfc2ff",
+                "surface-container-low": "#1a1c1c",
+                "surface-tint": "#abc7ff",
+                "error": "#ffb4ab",
+                "primary": "#abc7ff",
+                "on-tertiary": "#003737",
+                "on-primary-container": "#002859",
+                "surface-container-highest": "#333535",
+                "inverse-surface": "#e2e2e2",
+                "primary-fixed-dim": "#abc7ff",
+                "secondary-container": "#3239a3",
+                "primary-container": "#448fff",
+                "inverse-primary": "#005cbc",
+                "on-primary": "#002f66",
+                "surface-container-lowest": "#0c0f0f",
+                "error-container": "#93000a",
+                "on-tertiary-fixed": "#002020",
+                "on-error-container": "#ffdad6",
+                "tertiary-fixed": "#00fbfb",
+                "surface-container": "#1e2020",
+                "outline-variant": "#414754",
+                "on-secondary-container": "#a9afff",
+                "on-tertiary-container": "#002f2f",
+                "tertiary-container": "#00a1a1",
+                "tertiary-fixed-dim": "#00dddd",
+                "on-secondary": "#181d8c",
+                "surface": "#0B1221",
+                "on-surface": "#e2e2e2",
+                "surface-container-high": "#282a2b",
+                "on-secondary-fixed": "#00006e"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "sm": "16px",
+                "base": "4px",
+                "lg": "40px",
+                "xl": "64px",
+                "gutter": "24px",
+                "md": "24px",
+                "xs": "8px",
+                "margin": "32px"
+            },
+            "fontFamily": {
+                "label-md": ["Inter"],
+                "headline-xl": ["Inter"],
+                "body-lg": ["Inter"],
+                "headline-lg-mobile": ["Inter"],
+                "label-sm": ["Inter"],
+                "body-md": ["Inter"],
+                "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #02040A;
+            color: #e2e2e2;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(11, 18, 33, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 50% -20%, rgba(171, 199, 255, 0.15) 0%, rgba(2, 4, 10, 0) 60%);
+        }
+        .accent-glow {
+            box-shadow: 0 0 40px -10px rgba(0, 221, 221, 0.3);
+        }
+        .text-glow {
+            text-shadow: 0 0 15px rgba(171, 199, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface/80 dark:bg-surface/80 backdrop-blur-xl docked full-width top-0 sticky z-50 border-b border-outline-variant/10 shadow-sm">
+<div class="flex justify-between items-center w-full px-margin py-xs max-w-7xl mx-auto">
+<div class="flex items-center gap-md">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary tracking-tight">TruthLens AI</span>
+<nav class="hidden md:flex gap-md ml-lg">
+<a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1" href="#">Home</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Detector</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Features</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Pricing</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="hidden md:flex items-center gap-xs text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-md py-xs rounded-lg hover:brightness-110 transition-all">
+                    Get Started
+                </button>
+</div>
+</div>
+</header>
+<main class="hero-gradient">
+<!-- Hero Section -->
+<section class="max-w-7xl mx-auto px-margin pt-xl pb-lg grid md:grid-cols-2 gap-xl items-center">
+<div class="flex flex-col gap-md">
+<div class="inline-flex items-center gap-xs bg-primary-container/10 border border-primary/20 px-sm py-1 rounded-full w-fit">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">Next-Gen AI Forensics</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-white tracking-tight leading-none">
+                    Detect News with <span class="text-primary text-glow">Precision</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
+                    Expose deepfakes, verify source integrity, and profile cognitive bias with our advanced neural forensic engine. Truth starts here.
+                </p>
+<div class="flex flex-wrap gap-md pt-base">
+<button class="bg-primary text-on-primary px-lg py-sm rounded-xl font-label-md text-label-md flex items-center gap-sm shadow-lg hover:scale-105 transition-transform">
+                        Verify Now <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="border border-outline-variant text-on-surface px-lg py-sm rounded-xl font-label-md text-label-md hover:bg-surface-container transition-all">
+                        View Documentation
+                    </button>
+</div>
+</div>
+<div class="relative group">
+<div class="absolute inset-0 bg-primary/20 blur-[100px] rounded-full opacity-30 group-hover:opacity-50 transition-opacity"></div>
+<img class="w-full h-auto relative z-10 rounded-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTVbrbsZLwpSWNVCrIKNVOxPE7d1yeVxOkrwrUSfUCgHZPbX-FVBzlOYiv1ptIxCSj4imyydkD7Ts-jTOQ6xeotxpKLtsS2ISw4DDwZElasWS_olUOKCUsWpEUakh9myLvdj7ieCoFi68k8GcCOpVSBsHOums5eQk94cG3CE9tA3BoDNOilPaRTCmtdPdHkQOFxxw7un_1q7GScapLS93fUVL9ec31L0iGmM-TAu1ABqvKiB1xBnGLP_R4shl2lIbtEboGk-dRApBW"/>
+</div>
+</section>
+<!-- Trusted By Bar -->
+<section class="w-full bg-surface-container-lowest border-y border-outline-variant/10 py-lg px-margin overflow-hidden">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-xl">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-[0.2em]">Validated by Industry Leaders</span>
+<div class="flex flex-wrap justify-center items-center gap-xl opacity-60">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface">CYBERTECH</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface">DATACORE</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 1;">language</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface">GLOBENET</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Analyze News Detector Card (Bento Focus) -->
+<section class="max-w-7xl mx-auto px-margin py-xl">
+<div class="grid lg:grid-cols-3 gap-md">
+<div class="lg:col-span-2 glass-card rounded-2xl p-lg flex flex-col gap-md relative overflow-hidden accent-glow">
+<div class="flex justify-between items-center mb-base">
+<h3 class="font-headline-lg text-headline-lg text-white">Analyze News</h3>
+<div class="flex gap-xs">
+<span class="w-3 h-3 rounded-full bg-error/40"></span>
+<span class="w-3 h-3 rounded-full bg-secondary/40"></span>
+<span class="w-3 h-3 rounded-full bg-tertiary/40"></span>
+</div>
+</div>
+<div class="relative">
+<textarea id="analysis-input" class="w-full h-48 bg-surface-container-low border-outline-variant/20 rounded-xl p-md text-body-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Paste article URL or raw text here..."></textarea>
+<div class="absolute bottom-md right-md flex gap-sm">
+<button class="bg-surface-container-high p-sm rounded-lg hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attachment</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-md">
+<label class="flex items-center gap-xs cursor-pointer group">
+<input checked="" class="rounded border-outline text-primary focus:ring-primary bg-transparent" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Deepfake Check</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input checked="" class="rounded border-outline text-primary focus:ring-primary bg-transparent" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Source Logic</span>
+</label>
+</div>
+<button id="run-analysis-btn" class="bg-tertiary text-on-tertiary px-lg py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all active:scale-95">
+                            RUN ANALYSIS
+                        </button>
+</div>
+<!-- Micro-Interaction SVG decoration -->
+<div class="absolute -right-10 -bottom-10 opacity-5">
+<span class="material-symbols-outlined text-[200px]" style="font-variation-settings: 'FILL' 0;">query_stats</span>
+</div>
+</div>
+<div class="glass-card rounded-2xl p-lg flex flex-col gap-lg border-primary/20">
+<div class="flex flex-col gap-xs">
+<span class="font-label-sm text-label-sm text-tertiary uppercase tracking-widest">Active Scan</span>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-white">Live Monitoring</h4>
+</div>
+<div class="flex flex-col gap-md">
+<div class="flex items-center gap-md bg-surface-container p-sm rounded-lg border-l-4 border-tertiary">
+<div class="w-10 h-10 rounded-full bg-tertiary/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">rss_feed</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Reuters Feed</p>
+<p class="text-[10px] text-outline">Verified 2m ago</p>
+</div>
+</div>
+<div class="flex items-center gap-md bg-surface-container p-sm rounded-lg border-l-4 border-error">
+<div class="w-10 h-10 rounded-full bg-error/20 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Anomalous Trend</p>
+<p class="text-[10px] text-outline">High Bias Detected</p>
+</div>
+</div>
+<div class="flex items-center gap-md bg-surface-container p-sm rounded-lg border-l-4 border-primary">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Session History</p>
+<p class="text-[10px] text-outline">12 verified today</p>
+</div>
+</div>
+</div>
+<button class="mt-auto w-full border border-primary/30 py-sm rounded-xl text-primary font-label-md text-label-md hover:bg-primary/5 transition-all">
+                        Upgrade Pro
+                    </button>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="max-w-7xl mx-auto px-margin py-xl flex flex-col gap-xl">
+<div class="text-center flex flex-col gap-sm max-w-2xl mx-auto">
+<h2 class="font-headline-lg text-headline-lg text-white">Advanced Forensic Suite</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Our tools go beyond simple fact-checking, diving deep into the neural patterns of disinformation.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-md">
+<!-- AI Detection -->
+<div class="glass-card rounded-2xl p-lg flex flex-col gap-md group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform">
+<span class="material-symbols-outlined text-on-primary text-[32px]" style="font-variation-settings: 'FILL' 1;">neurology</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-white">AI Detection</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Identify synthetic text, images, and audio with 99.8% accuracy using our proprietary LLM forensic filters.</p>
+</div>
+<!-- Source Integrity -->
+<div class="glass-card rounded-2xl p-lg flex flex-col gap-md group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-tertiary to-tertiary-container flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform">
+<span class="material-symbols-outlined text-on-tertiary text-[32px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-white">Source Integrity</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Cross-reference metadata and historical reputation to track the origin of every claim across the open web.</p>
+</div>
+<!-- Bias Profiling -->
+<div class="glass-card rounded-2xl p-lg flex flex-col gap-md group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-secondary to-secondary-container flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform">
+<span class="material-symbols-outlined text-on-secondary text-[32px]" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-white">Bias Profiling</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Quantify ideological leaning and emotional manipulation tactics using advanced sentiment vector analysis.</p>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="max-w-7xl mx-auto px-margin py-xl">
+<div class="relative rounded-3xl overflow-hidden bg-surface-container-high border border-outline-variant/20 p-xl flex flex-col items-center text-center gap-md">
+<div class="absolute inset-0 opacity-10 pointer-events-none">
+<div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-from)_0%,transparent_100%)] from-primary/30"></div>
+</div>
+<h2 class="font-headline-xl text-headline-xl text-white relative z-10">Ready to trust the news again?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl relative z-10">Join 50,000+ journalists, researchers, and citizens using TruthLens to navigate the digital age.</p>
+<div class="flex gap-md relative z-10 mt-md">
+<button class="bg-primary text-on-primary px-xl py-sm rounded-full font-label-md text-label-md font-bold hover:shadow-primary/20 hover:shadow-2xl transition-all">Start Free Trial</button>
+<button class="text-white hover:text-primary transition-colors flex items-center gap-xs font-label-md text-label-md">Book a Demo <span class="material-symbols-outlined">arrow_outward</span></button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant/10">
+<div class="w-full px-margin py-lg flex flex-col md:flex-row justify-between items-center gap-md max-w-7xl mx-auto">
+<div class="flex flex-col gap-xs items-center md:items-start">
+<span class="font-headline-lg text-headline-lg text-on-surface">TruthLens AI</span>
+<p class="font-label-sm text-label-sm text-secondary dark:text-secondary opacity-80">© 2024 TruthLens AI. Precision Verification.</p>
+</div>
+<div class="flex gap-lg">
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors transition-opacity opacity-80 hover:opacity-100" href="#">API Status</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors transition-opacity opacity-80 hover:opacity-100" href="#">Support</a>
+</div>
+</div>
+</footer>
+<script>
+        const textarea = document.getElementById('analysis-input');
+        const runBtn = document.getElementById('run-analysis-btn');
+
+        textarea.addEventListener('focus', () => {
+            textarea.parentElement.parentElement.classList.add('accent-glow');
+        });
+        textarea.addEventListener('blur', () => {
+            if (textarea.value.length === 0) {
+                // Keep glow for visual feedback
+            }
+        });
+
+        runBtn.addEventListener('click', async () => {
+            const content = textarea.value.trim();
+            if (!content) {
+                alert('Please enter some text or URL');
+                return;
+            }
+
+            runBtn.textContent = 'ANALYZING...';
+            runBtn.disabled = true;
+
+            try {
+                const type = content.includes('http') ? 'url' : 'text';
+                const response = await fetch('/api/Analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, content })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Store result and redirect to results page
+                    sessionStorage.setItem('analysisResult', JSON.stringify(data.result || data));
+                    window.location.href = '/results.html';
+                } else {
+                    alert('Analysis failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error connecting to server');
+            } finally {
+                runBtn.textContent = 'RUN ANALYSIS';
+                runBtn.disabled = false;
+            }
+        });
+
+        // Background parallax effect
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            const heroImage = document.querySelector('img[src*="lh3.googleusercontent"]');
+            if (heroImage) {
+                heroImage.style.transform = `translate(${(x - 0.5) * 10}px, ${(y - 0.5) * 10}px)`;
+            }
+        });
+    </script>
+</body></html>

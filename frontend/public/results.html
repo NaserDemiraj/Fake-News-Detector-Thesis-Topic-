@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VerifyNews | Deep Forensic Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001b3f",
+                        "on-error": "#690005",
+                        "primary-fixed": "#d7e2ff",
+                        "surface-variant": "#333535",
+                        "on-primary-fixed-variant": "#004590",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-tertiary-fixed-variant": "#004f4f",
+                        "inverse-on-surface": "#2f3131",
+                        "outline": "#8b91a0",
+                        "secondary-fixed": "#e0e0ff",
+                        "on-background": "#e2e2e2",
+                        "background": "#02040A",
+                        "tertiary": "#00dddd",
+                        "on-secondary-fixed-variant": "#3239a3",
+                        "surface-dim": "#121414",
+                        "surface-bright": "#37393a",
+                        "secondary-fixed-dim": "#bfc2ff",
+                        "secondary": "#bfc2ff",
+                        "surface-container-low": "#1a1c1c",
+                        "surface-tint": "#abc7ff",
+                        "error": "#ffb4ab",
+                        "primary": "#abc7ff",
+                        "on-tertiary": "#003737",
+                        "on-primary-container": "#002859",
+                        "surface-container-highest": "#333535",
+                        "inverse-surface": "#e2e2e2",
+                        "primary-fixed-dim": "#abc7ff",
+                        "secondary-container": "#3239a3",
+                        "primary-container": "#448fff",
+                        "inverse-primary": "#005cbc",
+                        "on-primary": "#002f66",
+                        "surface-container-lowest": "#0c0f0f",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#002020",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#00fbfb",
+                        "surface-container": "#1e2020",
+                        "outline-variant": "#414754",
+                        "on-secondary-container": "#a9afff",
+                        "on-tertiary-container": "#002f2f",
+                        "tertiary-container": "#00a1a1",
+                        "tertiary-fixed-dim": "#00dddd",
+                        "on-secondary": "#181d8c",
+                        "surface": "#0B1221",
+                        "on-surface": "#e2e2e2",
+                        "surface-container-high": "#282a2b",
+                        "on-secondary-fixed": "#00006e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "16px",
+                        "base": "4px",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "gutter": "24px",
+                        "md": "24px",
+                        "xs": "8px",
+                        "margin": "32px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #02040A;
+            color: #e2e2e2;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(11, 18, 33, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+            transform-style: preserve-3d;
+        }
+        .glass-card:hover {
+            transform: translateY(-8px) rotateX(4deg) rotateY(2deg);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(171, 199, 255, 0.1);
+        }
+        .gradient-verdict {
+            background: linear-gradient(90deg, #abc7ff, #00fbfb, #abc7ff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+        }
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+        .pulse-status {
+            animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes status-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 251, 251, 0.7); }
+            50% { opacity: 0.6; transform: scale(1.2); box-shadow: 0 0 15px 4px rgba(0, 251, 251, 0.3); }
+        }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .scroll-reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .slide-3d {
+            transform: perspective(1000px) rotateY(-15deg) translateX(-50px);
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .slide-3d.visible {
+            transform: perspective(1000px) rotateY(0) translateX(0);
+            opacity: 1;
+        }
+        .mesh-bg {
+            background-image: radial-gradient(at 0% 0%, rgba(171, 199, 255, 0.05) 0px, transparent 50%),
+                              radial-gradient(at 100% 100%, rgba(0, 221, 221, 0.03) 0px, transparent 50%);
+            position: relative;
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 1s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .counter-container {
+            perspective: 1000px;
+        }
+        .tooltip-container {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #1e2020;
+            border: 1px solid rgba(171, 199, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            width: 200px;
+            z-index: 100;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 12px;
+        }
+        .tooltip-container:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        /* Custom 3D Button */
+        .btn-3d {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 0 #004590;
+        }
+        .btn-3d:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #004590;
+        }
+        .btn-3d:active {
+            transform: translateY(2px);
+            box-shadow: 0 0px 0 #004590;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md mesh-bg min-h-screen">
+<header class="bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 shadow-sm docked full-width top-0 sticky z-50">
+<div class="flex justify-between items-center w-full px-margin py-xs max-w-7xl mx-auto">
+<div class="flex items-center gap-sm">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary tracking-tight">VerifyNews</span>
+<span class="bg-tertiary-container/30 text-tertiary text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Forensic v4.2</span>
+</div>
+<nav class="hidden md:flex items-center gap-md">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="/">Dashboard</a>
+<a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1" href="/results.html">Active Report</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#deep-scan-section">Deep Scan</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#network-section">Network</a>
+</nav>
+<div class="flex items-center gap-sm">
+<div class="flex gap-2">
+<button onclick="downloadPDF()" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[18px]">download</span> PDF
+                </button>
+<button onclick="downloadJSON()" class="btn-3d flex items-center gap-xs bg-primary text-on-primary px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[18px]">terminal</span> JSON
+                </button>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-margin py-xl">
+<!-- Hero Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-xl mb-xl items-center scroll-reveal">
+<div class="space-y-sm">
+<div class="flex items-center gap-sm">
+<span class="text-tertiary-fixed-dim bg-tertiary-container/20 px-xs py-1 rounded text-label-sm font-label-sm uppercase tracking-widest flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary pulse-status"></span> LIVE ANALYSIS
+                </span>
+<span id="session-id" class="text-outline text-label-sm font-mono tracking-tighter">S_ID: VN-DEEP-449-01</span>
+</div>
+<h1 class="font-headline-xl text-[56px] leading-[1.1] text-on-surface tracking-tight">Forensic Verdict</h1>
+<div class="flex items-center gap-md pt-base">
+<h2 id="verdict-display" class="font-headline-lg text-headline-lg gradient-verdict uppercase font-black tracking-widest">Analyzing...</h2>
+<span class="material-symbols-outlined text-tertiary text-3xl animate-bounce">verified</span>
+</div>
+<p id="explanation" class="text-on-surface-variant font-body-lg text-body-lg max-w-xl leading-relaxed">
+                Loading analysis results...
+            </p>
+</div>
+<div class="flex justify-center lg:justify-end counter-container">
+<div class="relative w-72 h-72 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full" viewbox="0 0 100 100">
+<circle class="text-surface-container-highest" cx="50" cy="50" fill="transparent" r="44" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-primary progress-ring-circle" cx="50" cy="50" fill="transparent" id="main-score-ring" r="44" stroke="currentColor" stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="flex flex-col items-center">
+<div class="flex items-baseline">
+<span class="text-7xl font-black text-on-surface" id="score-counter">0</span>
+<span class="text-3xl font-bold text-primary">%</span>
+</div>
+<span class="text-label-sm font-label-sm text-outline tracking-widest uppercase mt-xs">Integrity Score</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Core Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md mb-xl">
+<!-- Sentiment Radar -->
+<div class="glass-card p-md rounded-xl scroll-reveal">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md flex items-center justify-between">
+                Emotional Sentiment
+                <span class="material-symbols-outlined text-sm">info</span>
+</h3>
+<div class="flex flex-col items-center py-sm">
+<div class="relative w-32 h-32 mb-md">
+<svg class="w-full h-full" viewbox="0 0 100 100">
+<polygon fill="none" points="50,10 90,40 75,90 25,90 10,40" stroke="rgba(255,255,255,0.1)" stroke-width="1"></polygon>
+<polygon fill="rgba(171,199,255,0.2)" points="50,30 75,45 65,70 35,70 25,45" stroke="#abc7ff" stroke-width="2"></polygon>
+</svg>
+</div>
+<div id="sentiment-label" class="text-headline-lg font-headline-lg text-primary">Neutral</div>
+<span id="sentiment-deviation" class="text-label-sm text-outline">0.02 Deviation</span>
+</div>
+</div>
+<!-- Bias Spectrum -->
+<div class="glass-card p-md rounded-xl scroll-reveal" style="transition-delay: 100ms">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md">Political Spectrum</h3>
+<div class="space-y-sm py-xs">
+<div class="flex justify-between text-label-sm mb-1">
+<span class="text-primary-fixed-dim">Progressive</span>
+<span class="text-secondary">Conservative</span>
+</div>
+<div class="h-6 w-full bg-surface-container-highest rounded-full overflow-hidden flex p-1">
+<div id="spectrum-left" class="h-full bg-primary-container rounded-l-full transition-all duration-700" style="width: 45%"></div>
+<div class="h-full bg-surface-container mx-1" style="width: 10%"></div>
+<div id="spectrum-right" class="h-full bg-secondary-container rounded-r-full transition-all duration-700" style="width: 45%"></div>
+</div>
+<div class="flex justify-center pt-xs">
+<span id="spectrum-label" class="bg-surface-container px-3 py-1 rounded-full text-label-sm text-on-surface border border-outline-variant/30">CENTER-ALIGNED</span>
+</div>
+</div>
+</div>
+<!-- Risk Rings -->
+<div class="glass-card p-md rounded-xl scroll-reveal" style="transition-delay: 200ms">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md">Risk Profile</h3>
+<div class="grid grid-cols-3 gap-2">
+<div class="flex flex-col items-center">
+<div class="relative w-16 h-16 flex items-center justify-center mb-xs">
+<svg class="w-full h-full" viewbox="0 0 40 40">
+<circle class="text-surface-container" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-width="3"></circle>
+<circle id="ring-manip" class="text-tertiary progress-ring-circle" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-dasharray="100" stroke-dashoffset="92" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span id="ring-manip-label" class="absolute text-[10px] font-bold">8%</span>
+</div>
+<span id="ring-manip-name" class="text-[10px] uppercase text-outline text-center">Manip</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="relative w-16 h-16 flex items-center justify-center mb-xs">
+<svg class="w-full h-full" viewbox="0 0 40 40">
+<circle class="text-surface-container" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-width="3"></circle>
+<circle id="ring-senti" class="text-primary progress-ring-circle" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-dasharray="100" stroke-dashoffset="75" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span id="ring-senti-label" class="absolute text-[10px] font-bold">25%</span>
+</div>
+<span id="ring-senti-name" class="text-[10px] uppercase text-outline text-center">Senti</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="relative w-16 h-16 flex items-center justify-center mb-xs">
+<svg class="w-full h-full" viewbox="0 0 40 40">
+<circle class="text-surface-container" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-width="3"></circle>
+<circle id="ring-integr" class="text-secondary progress-ring-circle" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-dasharray="100" stroke-dashoffset="98" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span id="ring-integr-label" class="absolute text-[10px] font-bold">2%</span>
+</div>
+<span id="ring-integr-name" class="text-[10px] uppercase text-outline text-center">Integr</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Evidence Log Grid -->
+<div class="mb-xl">
+<h2 class="font-headline-lg text-headline-lg mb-lg flex items-center gap-sm scroll-reveal">
+<span class="material-symbols-outlined text-primary">database</span>
+            Evidence Logs
+        </h2>
+<div id="evidence-logs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+<div class="glass-card p-md rounded-xl text-center text-outline col-span-full py-lg">Loading evidence logs...</div>
+</div>
+</div>
+<!-- Proof Chain Timeline -->
+<div class="scroll-reveal mt-2xl">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase mb-xl text-center tracking-[0.2em]">Forensic Proof Chain</h2>
+<div class="relative max-w-4xl mx-auto pb-12">
+<div class="absolute top-8 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<div class="grid grid-cols-4 gap-4">
+<!-- Step 1 -->
+<div class="flex flex-col items-center group cursor-pointer transition-all hover:-translate-y-2">
+<div class="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center z-10 group-hover:border-primary transition-colors">
+<span class="material-symbols-outlined text-primary">input</span>
+</div>
+<div class="mt-sm text-center">
+<div class="font-bold text-sm text-on-surface">INGEST</div>
+<div class="text-[10px] text-outline uppercase font-mono">0.002s</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center group cursor-pointer transition-all hover:-translate-y-2" style="transition-delay: 100ms">
+<div class="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center z-10 group-hover:border-tertiary transition-colors">
+<span class="material-symbols-outlined text-tertiary">data_object</span>
+</div>
+<div class="mt-sm text-center">
+<div class="font-bold text-sm text-on-surface">PARSING</div>
+<div class="text-[10px] text-outline uppercase font-mono">0.145s</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center group cursor-pointer transition-all hover:-translate-y-2" style="transition-delay: 200ms">
+<div class="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center z-10 group-hover:border-secondary transition-colors">
+<span class="material-symbols-outlined text-secondary">hub</span>
+</div>
+<div class="mt-sm text-center">
+<div class="font-bold text-sm text-on-surface">CORRELATE</div>
+<div class="text-[10px] text-outline uppercase font-mono">0.892s</div>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex flex-col items-center group cursor-pointer transition-all hover:-translate-y-2" style="transition-delay: 300ms">
+<div class="w-16 h-16 rounded-full bg-primary/20 border border-primary flex items-center justify-center z-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+</div>
+<div class="mt-sm text-center">
+<div class="font-bold text-sm text-primary">VERIFIED</div>
+<div class="text-[10px] text-outline uppercase font-mono">1.240s</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Deep Scan Section -->
+<section id="deep-scan-section" class="mb-xl mt-xl scroll-reveal">
+  <h2 class="font-headline-lg text-headline-lg mb-lg flex items-center gap-sm">
+    <span class="material-symbols-outlined text-error">radar</span>
+    Deep Scan Analysis
+  </h2>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-md mb-md">
+    <!-- Red Flags -->
+    <div class="glass-card p-md rounded-xl">
+      <h3 class="font-label-md text-label-md text-error uppercase mb-md flex items-center gap-xs">
+        <span class="material-symbols-outlined text-sm">warning</span> Red Flags
+      </h3>
+      <ul id="red-flags-list" class="flex flex-col divide-y divide-outline-variant/10 min-h-[60px]">
+        <li class="text-outline text-sm py-xs">Loading...</li>
+      </ul>
+    </div>
+    <!-- Credibility Signals -->
+    <div class="glass-card p-md rounded-xl">
+      <h3 class="font-label-md text-label-md text-tertiary uppercase mb-md flex items-center gap-xs">
+        <span class="material-symbols-outlined text-sm">verified</span> Credibility Signals
+      </h3>
+      <ul id="credibility-signals-list" class="flex flex-col divide-y divide-outline-variant/10 min-h-[60px]">
+        <li class="text-outline text-sm py-xs">Loading...</li>
+      </ul>
+    </div>
+  </div>
+  <!-- Claims Analysis -->
+  <div class="glass-card p-md rounded-xl">
+    <h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md flex items-center gap-xs">
+      <span class="material-symbols-outlined text-sm">fact_check</span> Claims Analysis
+    </h3>
+    <div id="claims-list" class="flex flex-col gap-sm">
+      <div class="text-outline text-sm">Loading...</div>
+    </div>
+  </div>
+</section>
+
+<!-- Network Section -->
+<section id="network-section" class="mb-xl scroll-reveal">
+  <h2 class="font-headline-lg text-headline-lg mb-lg flex items-center gap-sm">
+    <span class="material-symbols-outlined text-secondary">hub</span>
+    Network Analysis
+  </h2>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-md">
+    <!-- Bias & Manipulation -->
+    <div class="glass-card p-md rounded-xl">
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md flex items-center gap-xs">
+        <span class="material-symbols-outlined text-sm">psychology</span> Bias &amp; Manipulation
+      </h3>
+      <div class="flex flex-col gap-md">
+        <div>
+          <p class="text-[11px] uppercase text-outline tracking-widest mb-sm">Manipulation Tactics</p>
+          <div id="manipulation-tactics-list" class="flex flex-wrap gap-xs">
+            <span class="text-outline text-sm">Loading...</span>
+          </div>
+        </div>
+        <div class="border-t border-outline-variant/10 pt-md flex flex-col gap-xs">
+          <div class="flex items-center gap-sm">
+            <span class="material-symbols-outlined text-primary text-sm">policy</span>
+            <span class="text-sm text-on-surface-variant">Political Bias: <span id="political-bias-label" class="text-primary font-bold uppercase">—</span></span>
+          </div>
+          <div class="flex items-center gap-sm">
+            <span class="material-symbols-outlined text-secondary text-sm">warning_amber</span>
+            <span class="text-sm text-on-surface-variant">Fear Mongering: <span id="fear-mongering-label" class="font-bold">—</span></span>
+          </div>
+          <div class="flex items-center gap-sm">
+            <span class="material-symbols-outlined text-tertiary text-sm">lightbulb</span>
+            <span class="text-sm text-on-surface-variant">Clarity: <span id="clarity-label" class="text-tertiary">—</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Factor Breakdown -->
+    <div class="glass-card p-md rounded-xl">
+      <h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-md flex items-center gap-xs">
+        <span class="material-symbols-outlined text-sm">analytics</span> Factor Breakdown
+      </h3>
+      <div id="factors-breakdown" class="flex flex-col gap-md">
+        <div class="text-outline text-sm">Loading...</div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="bg-surface-container-lowest border-t border-outline-variant/10 full-width mt-xl">
+<div class="w-full px-margin py-lg flex flex-col md:flex-row justify-between items-center gap-md max-w-7xl mx-auto">
+<div class="flex flex-col gap-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface">VerifyNews</span>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">© 2024 Forensic Intelligence Unit.</span>
+</div>
+<div class="flex gap-md">
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('Security documentation is available in the project repository README.\n\nOllama: http://localhost:11434\nBackend API: http://localhost:5000/swagger')">Security Docs</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('Legal Notice: Forensic reports are for informational and research purposes only.\nThey do not constitute professional legal advice or evidence.')">Legal Forensic</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('API Endpoint: POST http://localhost:5000/api/Analysis\n\nRecent analyses: GET /api/Analysis/recent\nSwagger UI: http://localhost:5000/swagger')">API Endpoint</a>
+</div>
+</div>
+</footer>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const analysisData = sessionStorage.getItem('analysisResult');
+        if (!analysisData) { window.location.href = '/'; return; }
+
+        const result = JSON.parse(analysisData);
+        const analysisId = sessionStorage.getItem('analysisId') || ('VN-' + Math.random().toString(36).slice(2, 10).toUpperCase());
+        const targetScore = result.score != null ? Math.round(result.score) : 75;
+
+        // Session ID
+        const sidEl = document.getElementById('session-id');
+        if (sidEl) sidEl.textContent = 'S_ID: ' + analysisId.slice(0, 18).toUpperCase();
+
+        // Verdict & explanation
+        const verdictText = result.verdict === 'likely_true' ? 'Highly Trusted' :
+                            result.verdict === 'likely_fake' ? 'Potentially Fake' : 'Uncertain';
+        document.getElementById('verdict-display').textContent = verdictText;
+        document.getElementById('explanation').textContent = result.explanation || 'Analysis complete.';
+
+        // Emotional Sentiment
+        const emoScore = result.bias_detection?.emotional_language_score ?? 20;
+        const sentimentLabel = emoScore <= 25 ? 'Neutral' : emoScore <= 50 ? 'Moderate' : emoScore <= 75 ? 'High Emotion' : 'Extreme';
+        const deviation = ((emoScore / 100) * 2 - 1).toFixed(2);
+        const sentEl = document.getElementById('sentiment-label');
+        const devEl = document.getElementById('sentiment-deviation');
+        if (sentEl) sentEl.textContent = sentimentLabel;
+        if (devEl) devEl.textContent = (deviation >= 0 ? '+' : '') + deviation + ' Deviation';
+
+        // Political Spectrum
+        const politicalBias = result.bias_detection?.political_bias ?? 'neutral';
+        let leftW = 45, rightW = 45, spectrumLabel = 'CENTER-ALIGNED';
+        if (politicalBias === 'left')  { leftW = 65; rightW = 20; spectrumLabel = 'LEFT-LEANING'; }
+        else if (politicalBias === 'right') { leftW = 20; rightW = 65; spectrumLabel = 'RIGHT-LEANING'; }
+        else if (politicalBias === 'mixed') { leftW = 38; rightW = 38; spectrumLabel = 'MIXED BIAS'; }
+        const leftBarEl = document.getElementById('spectrum-left');
+        const rightBarEl = document.getElementById('spectrum-right');
+        const specLabelEl = document.getElementById('spectrum-label');
+        if (leftBarEl) leftBarEl.style.width = leftW + '%';
+        if (rightBarEl) rightBarEl.style.width = rightW + '%';
+        if (specLabelEl) specLabelEl.textContent = spectrumLabel;
+
+        // Risk Rings — map factors or derive from bias data
+        const factors = result.factors || [];
+        const manipScore = factors[0]?.score ?? Math.min(100, (result.bias_detection?.manipulation_tactics?.length ?? 0) * 25);
+        const sentiScore = factors[1]?.score ?? emoScore;
+        const integrScore = factors[2]?.score ?? targetScore;
+        const manipName = (factors[0]?.name ?? 'Manip').slice(0, 8);
+        const sentiName = (factors[1]?.name ?? 'Senti').slice(0, 8);
+        const integrName = (factors[2]?.name ?? 'Integr').slice(0, 8);
+
+        function setRing(circleId, labelId, nameId, score, name) {
+            const offset = Math.max(0, 100 - Math.round(score));
+            const el = document.getElementById(circleId);
+            const lbl = document.getElementById(labelId);
+            const nm = document.getElementById(nameId);
+            if (el) el.setAttribute('stroke-dashoffset', offset);
+            if (lbl) lbl.textContent = Math.round(score) + '%';
+            if (nm) nm.textContent = name;
+        }
+        setRing('ring-manip', 'ring-manip-label', 'ring-manip-name', manipScore, manipName);
+        setRing('ring-senti', 'ring-senti-label', 'ring-senti-name', sentiScore, sentiName);
+        setRing('ring-integr', 'ring-integr-label', 'ring-integr-name', integrScore, integrName);
+
+        // Scroll Reveal Animation (defined before evidence logs so we can call it after populating)
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, observerOptions);
+
+        function observeAnimated() {
+            document.querySelectorAll('.scroll-reveal, .slide-3d').forEach(el => observer.observe(el));
+        }
+
+        // Evidence Logs
+        const evidenceContainer = document.getElementById('evidence-logs-container');
+        if (evidenceContainer) {
+            const evidencePoints = result.evidence_points || [];
+            const claims = result.claims || [];
+            const rawItems = evidencePoints.length > 0 ? evidencePoints : claims.map(c => ({
+                text: c.text,
+                status: c.status === 'verified' ? 'verified' : c.status === 'partially_verified' ? 'warning' : 'unverified'
+            }));
+            const logColors = ['primary', 'tertiary', 'secondary', 'error', 'primary', 'tertiary'];
+            const statusMap = {
+                verified:           { badge: 'bg-green-500/10 text-green-400',  text: 'VERIFIED' },
+                warning:            { badge: 'bg-yellow-500/10 text-yellow-400', text: 'WARNING'  },
+                unverified:         { badge: 'bg-blue-500/10 text-blue-400',    text: 'ANALYZED' },
+                partially_verified: { badge: 'bg-yellow-500/10 text-yellow-400', text: 'PARTIAL'  },
+            };
+            if (rawItems.length === 0) {
+                evidenceContainer.innerHTML = '<div class="glass-card p-md rounded-xl text-center text-outline col-span-full py-lg">No evidence points detected for this analysis.</div>';
+            } else {
+                evidenceContainer.innerHTML = rawItems.slice(0, 6).map((item, i) => {
+                    const s = statusMap[item.status] || statusMap.unverified;
+                    const color = logColors[i % logColors.length];
+                    const logId = 'LOG_' + String(1000 + i * 3).padStart(4, '0');
+                    return `<div class="glass-card slide-3d p-md rounded-xl" style="transition-delay:${i * 100}ms">
+                        <div class="flex justify-between items-center mb-sm">
+                            <span class="text-label-sm font-mono text-${color}">${logId}</span>
+                            <span class="${s.badge} px-2 py-0.5 rounded text-[10px] uppercase font-bold">${s.text}</span>
+                        </div>
+                        <h4 class="font-bold text-on-surface mb-xs">Evidence Point ${i + 1}</h4>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">${item.text}</p>
+                    </div>`;
+                }).join('');
+                observeAnimated();
+            }
+        }
+
+        // Deep Scan — Red Flags
+        const rfList = document.getElementById('red-flags-list');
+        if (rfList) {
+            const flags = result.red_flags || [];
+            rfList.innerHTML = flags.length > 0
+                ? flags.map(f => `<li class="flex items-start gap-sm py-xs border-b border-outline-variant/10 last:border-0"><span class="material-symbols-outlined text-error text-sm mt-0.5 flex-shrink-0">warning</span><span class="text-on-surface-variant text-sm">${f}</span></li>`).join('')
+                : '<li class="text-outline text-sm py-xs">No red flags detected</li>';
+        }
+
+        // Deep Scan — Credibility Signals
+        const csList = document.getElementById('credibility-signals-list');
+        if (csList) {
+            const signals = result.credibility_signals || [];
+            csList.innerHTML = signals.length > 0
+                ? signals.map(s => `<li class="flex items-start gap-sm py-xs border-b border-outline-variant/10 last:border-0"><span class="material-symbols-outlined text-tertiary text-sm mt-0.5 flex-shrink-0">check_circle</span><span class="text-on-surface-variant text-sm">${s}</span></li>`).join('')
+                : '<li class="text-outline text-sm py-xs">No credibility signals detected</li>';
+        }
+
+        // Deep Scan — Claims
+        const claimsEl = document.getElementById('claims-list');
+        if (claimsEl) {
+            const clms = result.claims || [];
+            if (clms.length === 0) {
+                claimsEl.innerHTML = '<div class="text-outline text-sm">No claims analyzed</div>';
+            } else {
+                claimsEl.innerHTML = clms.map(c => {
+                    const statusColor = c.status === 'verified' ? 'text-tertiary' : c.status === 'unverified' ? 'text-error' : 'text-primary';
+                    const statusIcon = c.status === 'verified' ? 'check_circle' : c.status === 'unverified' ? 'cancel' : 'help';
+                    return `<div class="bg-surface-container p-sm rounded-lg flex items-start gap-sm">
+                        <span class="material-symbols-outlined ${statusColor} text-sm mt-0.5 flex-shrink-0">${statusIcon}</span>
+                        <div>
+                            <p class="text-sm text-on-surface">${c.text}</p>
+                            <span class="text-[10px] uppercase ${statusColor} font-bold tracking-wider">${(c.status || 'unverified').replace(/_/g, ' ')}</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Network — Manipulation Tactics
+        const tacticsEl = document.getElementById('manipulation-tactics-list');
+        if (tacticsEl) {
+            const tactics = result.bias_detection?.manipulation_tactics || [];
+            tacticsEl.innerHTML = tactics.length > 0
+                ? tactics.map(t => `<span class="bg-error/10 text-error border border-error/20 px-sm py-1 rounded-full text-[11px] font-mono uppercase">${t.replace(/_/g, ' ')}</span>`).join('')
+                : '<span class="text-tertiary text-sm">None detected</span>';
+        }
+
+        // Network — Bias labels
+        const pbEl = document.getElementById('political-bias-label');
+        const fmEl = document.getElementById('fear-mongering-label');
+        const clEl = document.getElementById('clarity-label');
+        if (pbEl) pbEl.textContent = politicalBias.toUpperCase();
+        if (fmEl) {
+            const fm = result.bias_detection?.fear_mongering ?? false;
+            fmEl.textContent = fm ? 'Yes' : 'No';
+            fmEl.className = 'font-bold ' + (fm ? 'text-error' : 'text-tertiary');
+        }
+        if (clEl) clEl.textContent = result.bias_detection?.clarity || 'Unknown';
+
+        // Network — Factor Breakdown
+        const factorsEl = document.getElementById('factors-breakdown');
+        if (factorsEl) {
+            const facs = result.factors || [];
+            if (facs.length === 0) {
+                factorsEl.innerHTML = '<div class="text-outline text-sm">No factor data available</div>';
+            } else {
+                factorsEl.innerHTML = facs.map(f => {
+                    const pct = Math.round(f.score);
+                    const color = pct >= 70 ? 'tertiary' : pct >= 40 ? 'primary' : 'error';
+                    return `<div class="flex flex-col gap-xs">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-on-surface">${f.name}</span>
+                            <span class="text-sm font-bold text-${color}">${pct}%</span>
+                        </div>
+                        <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                            <div class="h-full bg-${color} rounded-full" style="width:${pct}%;transition:width 0.8s ease"></div>
+                        </div>
+                        ${f.details ? `<p class="text-[11px] text-outline leading-relaxed">${f.details}</p>` : ''}
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Observe all reveal elements (including newly added ones)
+        observeAnimated();
+
+        // Animated Score Counter
+        const counterEl = document.getElementById('score-counter');
+        const ringEl = document.getElementById('main-score-ring');
+        let currentScore = 0;
+        const animateCounter = () => {
+            const step = () => {
+                if (currentScore < targetScore) {
+                    currentScore++;
+                    counterEl.textContent = currentScore;
+                    const offset = 276.46 - (currentScore / 100) * 276.46;
+                    ringEl.style.strokeDashoffset = offset;
+                    requestAnimationFrame(step);
+                }
+            };
+            requestAnimationFrame(step);
+        };
+        setTimeout(animateCounter, 400);
+    });
+
+    // PDF / JSON download (defined globally so onclick attributes can access them)
+    function downloadPDF() {
+        window.print();
+    }
+    function downloadJSON() {
+        const raw = sessionStorage.getItem('analysisResult');
+        if (!raw) { alert('No analysis data to export.'); return; }
+        const id = sessionStorage.getItem('analysisId') || 'report';
+        const blob = new Blob([JSON.stringify(JSON.parse(raw), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'analysis-' + id.slice(0, 16) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body></html>
