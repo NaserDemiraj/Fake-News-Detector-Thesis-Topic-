@@ -19,15 +19,27 @@ public static class AnalysisResultParser
 
             var result = new AnalysisResult { Success = true, Verdict = "uncertain" };
 
-            if (root.TryGetProperty("verdict",    out var v))   result.Verdict    = v.GetString() ?? "uncertain";
-            if (root.TryGetProperty("score",      out var s) && s.ValueKind == JsonValueKind.Number) result.Score = s.GetDouble();
-            if (root.TryGetProperty("confidence", out var c) && c.ValueKind == JsonValueKind.Number) result.Confidence = c.GetDouble();
-            if (root.TryGetProperty("summary",    out var sum)) result.Summary    = sum.GetString() ?? "";
-            if (root.TryGetProperty("explanation",out var exp)) result.Explanation = exp.GetString() ?? "";
-            if (root.TryGetProperty("reasoning",  out var r))  result.Reasoning  = r.GetString();
+            if (root.TryGetProperty("verdict",       out var v))   result.Verdict      = v.GetString() ?? "uncertain";
+            if (root.TryGetProperty("score",         out var s) && s.ValueKind == JsonValueKind.Number) result.Score = s.GetDouble();
+            if (root.TryGetProperty("confidence",    out var c) && c.ValueKind == JsonValueKind.Number) result.Confidence = c.GetDouble();
+            if (root.TryGetProperty("summary",       out var sum)) result.Summary      = sum.GetString() ?? "";
+            if (root.TryGetProperty("explanation",   out var exp)) result.Explanation  = exp.GetString() ?? "";
+            if (root.TryGetProperty("reasoning",     out var r))   result.Reasoning    = r.GetString();
+            if (root.TryGetProperty("language",      out var lg))  result.Language     = lg.GetString() ?? "en";
+            if (root.TryGetProperty("language_name", out var ln))  result.LanguageName = ln.GetString() ?? "English";
 
             result.CredibilitySignals = ExtractStringList(root, "credibility_signals");
             result.RedFlags           = ExtractStringList(root, "red_flags");
+
+            if (root.TryGetProperty("highlighted_sentences", out var hs))
+            {
+                result.HighlightedSentences = hs.EnumerateArray().Select(h => new SentenceHighlight
+                {
+                    Flag     = h.TryGetProperty("flag",     out var f) ? f.GetString() ?? "" : "",
+                    Sentence = h.TryGetProperty("sentence", out var se) ? se.GetString() ?? "" : "",
+                    Reason   = h.TryGetProperty("reason",   out var re) ? re.GetString() ?? "" : "",
+                }).Where(h => !string.IsNullOrEmpty(h.Sentence)).ToList();
+            }
 
             if (root.TryGetProperty("bias_detection", out var bias))
             {

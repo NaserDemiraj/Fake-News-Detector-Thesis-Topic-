@@ -5,18 +5,29 @@ namespace FakeNewsDetector.Models
         public bool Success { get; set; }
         public bool IsMock { get; set; } = false;
         public double Score { get; set; }
-        public double Confidence { get; set; } = 0.8; // AI confidence in the result
+        public double Confidence { get; set; } = 0.8;
         public string Verdict { get; set; } = string.Empty; // "likely_true", "likely_fake", "uncertain"
-        public string Summary { get; set; } = string.Empty; // Brief explanation
-        public string Explanation { get; set; } = string.Empty; // Detailed explanation
-        public List<string> CredibilitySignals { get; set; } = new List<string>(); // Positive signals
-        public List<string> RedFlags { get; set; } = new List<string>(); // Warning signs
-        public BiasDetection? BiasDetection { get; set; } // Manipulation & bias analysis
+        public string Summary { get; set; } = string.Empty;
+        public string Explanation { get; set; } = string.Empty;
+        public string Language { get; set; } = "en";       // ISO 639-1 code detected by AI
+        public string LanguageName { get; set; } = "English"; // Human-readable language name
+        public List<string> CredibilitySignals { get; set; } = new List<string>();
+        public List<string> RedFlags { get; set; } = new List<string>();
+        // Sentence-level explainability: which exact phrases triggered each red flag
+        public List<SentenceHighlight> HighlightedSentences { get; set; } = new List<SentenceHighlight>();
+        public BiasDetection? BiasDetection { get; set; }
         public List<AnalysisFactor> Factors { get; set; } = new List<AnalysisFactor>();
-        public List<EvidencePoint> EvidencePoints { get; set; } = new List<EvidencePoint>(); // Verified/unverified evidence
-        public List<Claim> Claims { get; set; } = new List<Claim>(); // Individual claim verification
-        public List<RiskCategory> RiskCategories { get; set; } = new List<RiskCategory>(); // Risk assessment metrics
-        public string? Reasoning { get; set; } // AI reasoning for the score
+        public List<EvidencePoint> EvidencePoints { get; set; } = new List<EvidencePoint>();
+        public List<Claim> Claims { get; set; } = new List<Claim>();
+        public List<RiskCategory> RiskCategories { get; set; } = new List<RiskCategory>();
+        public string? Reasoning { get; set; }
+    }
+
+    public class SentenceHighlight
+    {
+        public string Flag { get; set; } = string.Empty;     // the red flag this sentence triggered
+        public string Sentence { get; set; } = string.Empty; // verbatim excerpt from source text
+        public string Reason { get; set; } = string.Empty;   // brief explanation why this is a problem
     }
 
     public class BiasDetection

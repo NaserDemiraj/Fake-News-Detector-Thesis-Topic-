@@ -167,4 +167,73 @@ public class AnalysisResultParserTests
         Assert.True(r.Success);
         Assert.Equal(0, r.Score);
     }
+
+    // ── Sentence highlights ─────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_HighlightedSentences_Parsed()
+    {
+        var json = """
+        {
+          "verdict": "likely_fake",
+          "score": 18,
+          "highlighted_sentences": [
+            {"flag": "⚠ Sensational language", "sentence": "This SHOCKING truth will DESTROY everything!", "reason": "All-caps sensationalism"},
+            {"flag": "⚠ No sources cited",     "sentence": "Sources say the government is hiding this.", "reason": "Anonymous unnamed sources"}
+          ]
+        }
+        """;
+
+        var r = AnalysisResultParser.Parse(json);
+
+        Assert.Equal(2, r.HighlightedSentences.Count);
+        Assert.Equal("⚠ Sensational language", r.HighlightedSentences[0].Flag);
+        Assert.Contains("SHOCKING", r.HighlightedSentences[0].Sentence);
+        Assert.Equal("All-caps sensationalism", r.HighlightedSentences[0].Reason);
+    }
+
+    [Fact]
+    public void Parse_HighlightedSentences_EmptySentenceFiltered()
+    {
+        var json = """
+        {
+          "verdict": "likely_fake",
+          "score": 20,
+          "highlighted_sentences": [
+            {"flag": "⚠ Flag", "sentence": "", "reason": "reason"},
+            {"flag": "⚠ Flag 2", "sentence": "Real excerpt from the article.", "reason": "legit reason"}
+          ]
+        }
+        """;
+
+        var r = AnalysisResultParser.Parse(json);
+        Assert.Single(r.HighlightedSentences);
+        Assert.Equal("Real excerpt from the article.", r.HighlightedSentences[0].Sentence);
+    }
+
+    [Fact]
+    public void Parse_MissingHighlights_ReturnsEmptyList()
+    {
+        var r = AnalysisResultParser.Parse("""{"verdict":"likely_true","score":80}""");
+        Assert.Empty(r.HighlightedSentences);
+    }
+
+    // ── Language detection ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_LanguageFields_Parsed()
+    {
+        var json = """{"verdict":"likely_fake","score":30,"language":"sq","language_name":"Albanian"}""";
+        var r = AnalysisResultParser.Parse(json);
+        Assert.Equal("sq", r.Language);
+        Assert.Equal("Albanian", r.LanguageName);
+    }
+
+    [Fact]
+    public void Parse_MissingLanguage_DefaultsToEnglish()
+    {
+        var r = AnalysisResultParser.Parse("""{"verdict":"likely_true","score":80}""");
+        Assert.Equal("en", r.Language);
+        Assert.Equal("English", r.LanguageName);
+    }
 }

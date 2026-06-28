@@ -164,11 +164,15 @@
 <!-- Hero Section -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-xl mb-xl items-center scroll-reveal">
 <div class="space-y-sm">
-<div class="flex items-center gap-sm">
+<div class="flex items-center gap-sm flex-wrap">
 <span class="text-tertiary-fixed-dim bg-tertiary-container/20 px-xs py-1 rounded text-label-sm font-label-sm uppercase tracking-widest flex items-center gap-1">
 <span class="w-2 h-2 rounded-full bg-tertiary pulse-status"></span> LIVE ANALYSIS
                 </span>
 <span id="session-id" class="text-outline text-label-sm font-mono tracking-tighter">S_ID: VN-DEEP-449-01</span>
+<span id="language-badge" class="hidden bg-secondary-container/20 text-secondary text-[10px] px-2 py-1 rounded font-bold tracking-widest flex items-center gap-1">
+  <span class="material-symbols-outlined text-[12px]">translate</span>
+  <span id="language-badge-text">EN · English</span>
+</span>
 </div>
 <h1 class="font-headline-xl text-[56px] leading-[1.1] text-on-surface tracking-tight">Forensic Verdict</h1>
 <div class="flex items-center gap-md pt-base">
@@ -389,6 +393,7 @@
     <div class="glass-card p-md rounded-xl">
       <h3 class="font-label-md text-label-md text-error uppercase mb-md flex items-center gap-xs">
         <span class="material-symbols-outlined text-sm">warning</span> Red Flags
+        <span class="ml-auto text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 tracking-wider normal-case font-normal">Interpretable AI ✦</span>
       </h3>
       <ul id="red-flags-list" class="flex flex-col divide-y divide-outline-variant/10 min-h-[60px]">
         <li class="text-outline text-sm py-xs">Loading...</li>
@@ -513,6 +518,20 @@
         document.getElementById('verdict-display').textContent = verdictText;
         document.getElementById('explanation').textContent = result.explanation || 'Analysis complete.';
 
+        // Language badge — always shown; highlighted for non-English
+        const lang = (result.language || 'en').toLowerCase();
+        const langName = result.languageName || 'English';
+        const langBadge = document.getElementById('language-badge');
+        const langText = document.getElementById('language-badge-text');
+        if (langBadge && langText) {
+            langText.textContent = lang.toUpperCase() + ' · ' + langName;
+            langBadge.classList.remove('hidden');
+            if (lang !== 'en') {
+                langBadge.classList.add('bg-tertiary-container/30', 'text-tertiary', 'border', 'border-tertiary/30');
+                langBadge.classList.remove('bg-secondary-container/20', 'text-secondary');
+            }
+        }
+
         // Emotional Sentiment
         const emoScore = result.biasDetection?.emotionalLanguageScore ?? 20;
         const sentimentLabel = emoScore <= 25 ? 'Neutral' : emoScore <= 50 ? 'Moderate' : emoScore <= 75 ? 'High Emotion' : 'Extreme';
@@ -605,12 +624,41 @@
             }
         }
 
-        // Deep Scan — Red Flags
+        // Deep Scan — Red Flags with sentence-level explainability
         const rfList = document.getElementById('red-flags-list');
         if (rfList) {
             const flags = result.redFlags || [];
+            const highlights = result.highlightedSentences || [];
+
+            // Build lookup: normalised flag text → highlight object
+            const hlMap = new Map();
+            highlights.forEach(h => { if (h.flag) hlMap.set(h.flag.toLowerCase().trim(), h); });
+
+            function findHighlight(flagText) {
+                const key = flagText.toLowerCase().trim();
+                if (hlMap.has(key)) return hlMap.get(key);
+                for (const [k, v] of hlMap) {
+                    if (key.includes(k) || k.includes(key)) return v;
+                }
+                return null;
+            }
+
             rfList.innerHTML = flags.length > 0
-                ? flags.map(f => `<li class="flex items-start gap-sm py-xs border-b border-outline-variant/10 last:border-0"><span class="material-symbols-outlined text-error text-sm mt-0.5 flex-shrink-0">warning</span><span class="text-on-surface-variant text-sm">${f}</span></li>`).join('')
+                ? flags.map(f => {
+                    const h = findHighlight(f);
+                    const quoteHtml = h ? `
+                        <blockquote class="ml-6 pl-3 border-l-2 border-error/40 mt-1.5 space-y-0.5">
+                            <p class="text-xs text-outline/90 italic leading-relaxed">"${h.sentence}"</p>
+                            ${h.reason ? `<p class="text-[11px] text-error/60 not-italic">${h.reason}</p>` : ''}
+                        </blockquote>` : '';
+                    return `<li class="flex flex-col py-sm border-b border-outline-variant/10 last:border-0">
+                        <div class="flex items-start gap-sm">
+                            <span class="material-symbols-outlined text-error text-sm mt-0.5 flex-shrink-0">warning</span>
+                            <span class="text-on-surface-variant text-sm">${f}</span>
+                        </div>
+                        ${quoteHtml}
+                    </li>`;
+                }).join('')
                 : '<li class="text-outline text-sm py-xs">No red flags detected</li>';
         }
 

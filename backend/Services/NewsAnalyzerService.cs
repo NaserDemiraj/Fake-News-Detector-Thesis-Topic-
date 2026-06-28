@@ -103,19 +103,23 @@ namespace FakeNewsDetector.Services
 
             var apiUrl = _apiUrl;
 
-            var prompt = $@"Analyze this news content. Reply ONLY with JSON, no extra text.
+            var prompt = $@"Analyze this news content. Detect the language. Reply ONLY with JSON, no extra text.
 
 CONTENT: {truncated}
 
+Rules:
+- highlighted_sentences: quote ≤3 verbatim phrases (≤120 chars each) from CONTENT that directly triggered a red flag. Must be exact or near-exact quotes.
+- language: ISO 639-1 code (e.g. ""en"", ""sq"", ""de"").
+
 JSON:
-{{""verdict"":""likely_true""|""likely_fake""|""uncertain"",""score"":0-100,""explanation"":""1-2 sentences"",""red_flags"":[""⚠ short flag""],""credibility_signals"":[""✓ short signal""],""bias_detection"":{{""emotional_language_score"":0-100,""fear_mongering"":false,""political_bias"":""neutral""|""left""|""right""|""mixed"",""manipulation_tactics"":[],""clarity"":""word""}},""factors"":[{{""name"":""short"",""score"":0-100,""details"":""brief""}}],""evidence_points"":[{{""text"":""brief"",""status"":""verified""|""warning""|""unverified""}}]}}";
+{{""verdict"":""likely_true""|""likely_fake""|""uncertain"",""score"":0-100,""language"":""en"",""language_name"":""English"",""explanation"":""1-2 sentences"",""red_flags"":[""⚠ short flag""],""highlighted_sentences"":[{{""flag"":""⚠ exact flag text"",""sentence"":""verbatim ≤120 chars from CONTENT"",""reason"":""brief why""}}],""credibility_signals"":[""✓ short signal""],""bias_detection"":{{""emotional_language_score"":0-100,""fear_mongering"":false,""political_bias"":""neutral""|""left""|""right""|""mixed"",""manipulation_tactics"":[],""clarity"":""word""}},""factors"":[{{""name"":""short"",""score"":0-100,""details"":""brief""}}],""evidence_points"":[{{""text"":""brief"",""status"":""verified""|""warning""|""unverified""}}]}}";
 
             var requestPayload = new
             {
                 model = _model,
                 messages = new[] { new { role = "user", content = prompt } },
                 temperature = 0.1,
-                max_tokens = 600,
+                max_tokens = 1000,
                 response_format = new { type = "json_object" }
             };
 
@@ -152,6 +156,8 @@ JSON:
             Verdict = "likely_fake",
             Score = 35,
             Confidence = 0.72,
+            Language = "en",
+            LanguageName = "English",
             Summary = "This content shows multiple warning signs of misinformation.",
             Explanation = "The content uses conspiracy framing and makes extraordinary claims without credible evidence. " +
                           "This is a mock result — configure a Groq API key for real AI analysis.",
@@ -161,6 +167,19 @@ JSON:
                 "⚠ Extraordinary claims without credible evidence",
                 "⚠ Appeal to conspiracy theories",
                 "⚠ Anti-establishment framing"
+            },
+            HighlightedSentences = new List<SentenceHighlight>
+            {
+                new() {
+                    Flag     = "⚠ Extraordinary claims without credible evidence",
+                    Sentence = "This SHOCKING revelation will DESTROY everything you know about modern medicine!",
+                    Reason   = "All-caps sensational language; zero cited sources"
+                },
+                new() {
+                    Flag     = "⚠ Appeal to conspiracy theories",
+                    Sentence = "The mainstream media REFUSES to cover this because they are controlled by the globalist elite.",
+                    Reason   = "Classic conspiracy framing targeting established institutions"
+                },
             },
             BiasDetection = new BiasDetection
             {
@@ -173,9 +192,9 @@ JSON:
             Factors = new List<AnalysisFactor>
             {
                 new() { Name = "Source Credibility", Score = 20, Details = "No credible source identified" },
-                new() { Name = "Factual Accuracy", Score = 15, Details = "Major claims are unsubstantiated" },
+                new() { Name = "Factual Accuracy",   Score = 15, Details = "Major claims are unsubstantiated" },
                 new() { Name = "Balanced Reporting", Score = 10, Details = "One-sided narrative" },
-                new() { Name = "Sensationalism", Score = 85, Details = "Highly sensationalized language" }
+                new() { Name = "Sensationalism",     Score = 85, Details = "Highly sensationalized language" }
             }
         };
     }
