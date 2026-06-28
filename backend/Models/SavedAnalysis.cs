@@ -13,6 +13,9 @@ namespace FakeNewsDetector.Models
         public string? ResultJson { get; set; } // full AnalysisResult serialized as JSON
         public bool IsFavorite { get; set; }
         public string Notes { get; set; } = string.Empty;
+        public string? UserId { get; set; }
+        public string? ContentHash { get; set; } // SHA-256 of extracted content for dedup
+        public bool IsPublic { get; set; } = false; // shareable public link
 
         public string FormattedDate => Date.ToString("MMM dd, yyyy HH:mm");
 

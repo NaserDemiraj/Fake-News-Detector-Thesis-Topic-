@@ -4,28 +4,15 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "5000:80"
+      - "5000:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80
-    networks:
-      - app-network
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      Neon__HttpUrl: "${NEON_HTTP_URL}"
+      Neon__ConnectionUri: "${NEON_CONNECTION_URI}"
+      Ollama__Enabled: "true"
+      Ollama__BaseUrl: "http://host.docker.internal:11434"
+      Ollama__Model: "llama3.2:1b"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:80
-    depends_on:
-      - backend
-    networks:
-      - app-network
-    restart: unless-stopped
-
-networks:
-  app-network:
-    driver: bridge

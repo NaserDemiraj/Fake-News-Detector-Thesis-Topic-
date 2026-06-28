@@ -1,7 +1,9 @@
 using FakeNewsDetector.Models;
 using FakeNewsDetector.Services;
 using HtmlAgilityPack;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -16,7 +18,7 @@ namespace FakeNewsDetector.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AnalysisController> _logger;
 
-        private const int MaxContentBytes = 5 * 1024 * 1024; // 5 MB
+        private const int MaxContentBytes = 5 * 1024 * 1024;
         private static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(10);
 
         public AnalysisController(
@@ -30,6 +32,9 @@ namespace FakeNewsDetector.Controllers
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
+
+        // Helper — returns userId from JWT if present, null otherwise
+        private string? CurrentUserId => User.FindFirst("sub")?.Value;
 
         [HttpPost]
         public async Task<IActionResult> AnalyzeNews([FromBody] AnalysisRequest request)
@@ -101,7 +106,28 @@ namespace FakeNewsDetector.Controllers
 
             try
             {
-                var result = await _analyzerService.AnalyzeContentAsync(content);
+                // Content-hash dedup: if we've seen this exact content before, return cached result
+                var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
+                SavedAnalysis? cached = null;
+                try { cached = await _savedAnalysisService.GetByContentHashAsync(contentHash); } catch { }
+
+                AnalysisResult result;
+                string analysisId;
+                bool fromCache = false;
+
+                if (cached?.ResultJson != null)
+                {
+                    result = JsonSerializer.Deserialize<AnalysisResult>(cached.ResultJson,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? await _analyzerService.AnalyzeContentAsync(content);
+                    analysisId = cached.Id;
+                    fromCache = true;
+                    _logger.LogInformation("Cache hit for content hash {Hash}", contentHash[..8]);
+                }
+                else
+                {
+                    result = await _analyzerService.AnalyzeContentAsync(content);
+                    analysisId = Guid.NewGuid().ToString();
+                }
 
                 var truncatedContent = request.Content.Length > 500
                     ? request.Content.Substring(0, 500)
@@ -109,7 +135,7 @@ namespace FakeNewsDetector.Controllers
 
                 var savedAnalysis = new SavedAnalysis
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = analysisId,
                     Title = title,
                     Url = sourceUrl,
                     ContentType = request.Type,
@@ -119,13 +145,23 @@ namespace FakeNewsDetector.Controllers
                     Date = DateTime.UtcNow,
                     ResultJson = JsonSerializer.Serialize(result),
                     IsFavorite = false,
-                    Notes = string.Empty
+                    Notes = string.Empty,
+                    UserId = CurrentUserId,
+                    ContentHash = contentHash
                 };
 
-                try { _savedAnalysisService.SaveAnalysis(savedAnalysis); }
-                catch (Exception dbEx) { _logger.LogWarning(dbEx, "Could not save analysis to DB — returning result anyway"); }
+                var saved = true;
+                if (!fromCache)
+                {
+                    try { await _savedAnalysisService.SaveAnalysisAsync(savedAnalysis); }
+                    catch (Exception dbEx)
+                    {
+                        saved = false;
+                        _logger.LogWarning(dbEx, "Could not save analysis to DB — returning result anyway");
+                    }
+                }
 
-                return Ok(new { result, analysisId = savedAnalysis.Id });
+                return Ok(new { result, analysisId = savedAnalysis.Id, saved, cached = fromCache });
             }
             catch (Exception ex)
             {
@@ -134,12 +170,14 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("recent")]
-        public IActionResult GetRecentAnalyses([FromQuery] int count = 20)
+        public async Task<IActionResult> GetRecentAnalyses([FromQuery] int count = 20)
         {
+            var userId = CurrentUserId!;
             try
             {
-                var analyses = _savedAnalysisService.GetRecentAnalyses(Math.Clamp(count, 1, 100));
+                var analyses = await _savedAnalysisService.GetRecentAnalysesAsync(Math.Clamp(count, 1, 500), userId);
                 return Ok(analyses);
             }
             catch (Exception ex)
@@ -149,12 +187,14 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
+        [Authorize]
         [HttpPatch("{id}")]
-        public IActionResult UpdateAnalysis(string id, [FromBody] UpdateAnalysisRequest request)
+        public async Task<IActionResult> UpdateAnalysis(string id, [FromBody] UpdateAnalysisRequest request)
         {
+            var userId = CurrentUserId!;
             try
             {
-                _savedAnalysisService.UpdateAnalysis(id, request.IsFavorite, request.Notes ?? string.Empty);
+                await _savedAnalysisService.UpdateAnalysisAsync(id, request.IsFavorite, request.Notes ?? string.Empty, userId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -164,12 +204,14 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("{id}")]
-        public IActionResult DeleteAnalysis(string id)
+        public async Task<IActionResult> DeleteAnalysis(string id)
         {
+            var userId = CurrentUserId!;
             try
             {
-                _savedAnalysisService.DeleteAnalysis(id);
+                await _savedAnalysisService.DeleteAnalysisAsync(id, userId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -179,12 +221,14 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("stats")]
-        public IActionResult GetAnalysisStats()
+        public async Task<IActionResult> GetAnalysisStats()
         {
+            var userId = CurrentUserId!;
             try
             {
-                var all = _savedAnalysisService.GetAllAnalyses();
+                var all = await _savedAnalysisService.GetAllAnalysesAsync(userId);
                 return Ok(new
                 {
                     TotalAnalyses = all.Count,
@@ -201,16 +245,18 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("database")]
-        public IActionResult GetDatabaseRecords()
+        public async Task<IActionResult> GetDatabaseRecords()
         {
+            var userId = CurrentUserId!;
             try
             {
-                var all = _savedAnalysisService.GetAllAnalyses();
+                var all = await _savedAnalysisService.GetAllAnalysesAsync(userId);
                 return Ok(new
                 {
                     TotalRecords = all.Count,
-                    Records = all.OrderByDescending(a => a.Date).Select(a => new
+                    Records = all.Select(a => new
                     {
                         a.Id, a.Title, a.Url, a.ContentType, a.Verdict,
                         a.Score, a.IsFavorite, a.Notes,
@@ -225,34 +271,88 @@ namespace FakeNewsDetector.Controllers
             }
         }
 
-        // SSRF protection: block private/loopback addresses
+        // GET /api/Analysis/public/{id} — no auth, returns analysis only if IsPublic=true
+        [HttpGet("public/{id}")]
+        public async Task<IActionResult> GetPublicAnalysis(string id)
+        {
+            try
+            {
+                var analysis = await _savedAnalysisService.GetPublicAnalysisAsync(id);
+                if (analysis == null)
+                    return NotFound(new { detail = "Analysis not found or not publicly shared." });
+
+                var result = analysis.ResultJson != null
+                    ? JsonSerializer.Deserialize<object>(analysis.ResultJson)
+                    : null;
+
+                return Ok(new
+                {
+                    analysisId = analysis.Id,
+                    title = analysis.Title,
+                    url = analysis.Url,
+                    contentType = analysis.ContentType,
+                    verdict = analysis.Verdict,
+                    score = analysis.Score,
+                    date = analysis.FormattedDate,
+                    result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching public analysis: {Id}", id);
+                return Problem(title: "Error", detail: "Could not retrieve analysis.", statusCode: 500);
+            }
+        }
+
+        // PATCH /api/Analysis/{id}/share — toggle public sharing
+        [Authorize]
+        [HttpPatch("{id}/share")]
+        public async Task<IActionResult> SetPublicSharing(string id, [FromBody] SetPublicRequest request)
+        {
+            var userId = CurrentUserId!;
+            try
+            {
+                await _savedAnalysisService.SetPublicAsync(id, request.IsPublic, userId);
+                return Ok(new { isPublic = request.IsPublic });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating public status: {Id}", id);
+                return Problem(title: "Error", detail: "Could not update sharing status.", statusCode: 500);
+            }
+        }
+
+        // GET /api/Analysis/domain-stats?host=bbc.com
+        [HttpGet("domain-stats")]
+        public async Task<IActionResult> GetDomainStats([FromQuery] string host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+                return Problem(title: "Validation error", detail: "host parameter is required.", statusCode: 400);
+            try
+            {
+                var stats = await _savedAnalysisService.GetDomainStatsAsync(host.ToLowerInvariant());
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching domain stats: {Host}", host);
+                return Problem(title: "Error", detail: "Could not retrieve domain stats.", statusCode: 500);
+            }
+        }
+
         private static bool IsPrivateOrLocalhost(Uri uri)
         {
             var host = uri.Host.ToLowerInvariant();
-
-            if (host is "localhost" or "127.0.0.1" or "::1" or "0.0.0.0")
-                return true;
-
-            // AWS/GCP/Azure metadata endpoints
-            if (host.StartsWith("169.254."))
-                return true;
-
-            // RFC 1918 private ranges
-            if (host.StartsWith("10.") || host.StartsWith("192.168."))
-                return true;
-
-            // 172.16.0.0/12
+            if (host is "localhost" or "127.0.0.1" or "::1" or "0.0.0.0") return true;
+            if (host.StartsWith("169.254.")) return true;
+            if (host.StartsWith("10.") || host.StartsWith("192.168.")) return true;
             if (host.StartsWith("172."))
             {
                 var parts = host.Split('.');
                 if (parts.Length >= 2 && int.TryParse(parts[1], out var second) && second >= 16 && second <= 31)
                     return true;
             }
-
-            // Internal TLDs
-            if (host.EndsWith(".local") || host.EndsWith(".internal") || host.EndsWith(".localhost"))
-                return true;
-
+            if (host.EndsWith(".local") || host.EndsWith(".internal") || host.EndsWith(".localhost")) return true;
             return false;
         }
 
@@ -268,24 +368,19 @@ namespace FakeNewsDetector.Controllers
                     title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText.Trim() ?? title;
 
                 var scripts = doc.DocumentNode.SelectNodes("//script|//style");
-                if (scripts != null)
-                    foreach (var node in scripts) node.Remove();
+                if (scripts != null) foreach (var node in scripts) node.Remove();
 
                 var bodyNode = doc.DocumentNode.SelectSingleNode("//body");
-                if (bodyNode == null)
-                    return (doc.DocumentNode.InnerText, title);
+                if (bodyNode == null) return (doc.DocumentNode.InnerText, title);
 
                 var contentNodes = bodyNode.SelectNodes("//p|//h1|//h2|//h3|//h4|//h5|//h6|//article|//section");
-                if (contentNodes == null || contentNodes.Count == 0)
-                    return (bodyNode.InnerText, title);
+                if (contentNodes == null || contentNodes.Count == 0) return (bodyNode.InnerText, title);
 
                 var sb = new StringBuilder();
-                foreach (var node in contentNodes)
-                    sb.AppendLine(node.InnerText.Trim());
+                foreach (var node in contentNodes) sb.AppendLine(node.InnerText.Trim());
 
                 var text = System.Net.WebUtility.HtmlDecode(sb.ToString());
                 text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
-
                 return (text, title);
             }
             catch
@@ -302,5 +397,10 @@ namespace FakeNewsDetector.Controllers
     {
         public bool IsFavorite { get; set; }
         public string? Notes { get; set; }
+    }
+
+    public class SetPublicRequest
+    {
+        public bool IsPublic { get; set; }
     }
 }

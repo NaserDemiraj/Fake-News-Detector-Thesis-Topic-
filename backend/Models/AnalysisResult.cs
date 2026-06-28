@@ -3,6 +3,7 @@ namespace FakeNewsDetector.Models
     public class AnalysisResult
     {
         public bool Success { get; set; }
+        public bool IsMock { get; set; } = false;
         public double Score { get; set; }
         public double Confidence { get; set; } = 0.8; // AI confidence in the result
         public string Verdict { get; set; } = string.Empty; // "likely_true", "likely_fake", "uncertain"

@@ -1,35 +1,77 @@
 using FakeNewsDetector.Services;
-using FakeNewsDetector.Data;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using System.Threading.RateLimiting;
+
+// Disable default claim type mapping so "sub" stays as "sub"
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseKestrel(o => o.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(4));
-builder.Services.AddControllers();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpClient();
 builder.Services.AddHealthChecks();
 
-// Rate limiting: 20 requests per minute per IP
+// JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key must be set in configuration");
+
+if (jwtKey.StartsWith("CHANGE-THIS", StringComparison.OrdinalIgnoreCase) || jwtKey.Length < 32)
+    throw new InvalidOperationException(
+        "Jwt:Key is the default placeholder or too short (min 32 chars). " +
+        "Set a real secret via environment variable JWT__KEY or dotnet user-secrets.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "FakeNewsDetector",
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "FakeNewsDetector",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            NameClaimType = "sub"
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// Rate limiting: 20 requests per minute — per user ID when authenticated, per IP otherwise
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var userId = context.User?.FindFirst("sub")?.Value;
+        var partitionKey = !string.IsNullOrEmpty(userId)
+            ? "user:" + userId
+            : "ip:" + (context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(1)
-            }));
+            });
+    });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-// CORS - allow only the configured frontend origin(s)
+// CORS
 var allowedOrigins = builder.Configuration["AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries)
     ?? new[] { "http://localhost:3000" };
 
@@ -43,44 +85,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database - connection string must be provided via env var in production
-var connectionString = builder.Configuration.GetConnectionString("NeonDb");
-if (string.IsNullOrEmpty(connectionString))
-{
-    if (builder.Environment.IsDevelopment())
-    {
-        connectionString = "Host=localhost;Database=fakenews;Username=postgres;Password=postgres;";
-        Console.WriteLine("WARNING: NeonDb connection string not configured. Falling back to localhost. Set ConnectionStrings__NeonDb env var.");
-    }
-    else
-    {
-        throw new InvalidOperationException(
-            "NeonDb connection string not configured. Set the ConnectionStrings__NeonDb environment variable.");
-    }
-}
-
-builder.Services.AddDbContext<FakeNewsDetectorDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
+// Application services
+builder.Services.AddSingleton<NeonHttpService>();
 builder.Services.AddSingleton<INewsAnalyzerService, NewsAnalyzerService>();
 builder.Services.AddScoped<ISavedAnalysisService, SavedAnalysisService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 
-// Run pending migrations on startup
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<FakeNewsDetectorDbContext>();
-    try
-    {
-        dbContext.Database.Migrate();
-        app.Logger.LogInformation("Database migrated successfully");
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogWarning("Database migration failed (may already exist): {Message}", ex.Message);
-    }
-}
+// Run DB migrations on startup
+await RunMigrationsAsync(app);
 
 if (app.Environment.IsDevelopment())
 {
@@ -95,9 +109,51 @@ else
 
 app.UseHttpsRedirection();
 app.UseCors();
-app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+static async Task RunMigrationsAsync(WebApplication app)
+{
+    try
+    {
+        var neon = app.Services.GetRequiredService<NeonHttpService>();
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+        // Create Users table
+        await neon.ExecuteAsync(@"
+            CREATE TABLE IF NOT EXISTS ""Users"" (
+                ""Id""           TEXT PRIMARY KEY,
+                ""Email""        TEXT NOT NULL UNIQUE,
+                ""PasswordHash"" TEXT NOT NULL,
+                ""Name""         TEXT NOT NULL DEFAULT '',
+                ""CreatedAt""    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )");
+
+        // Add UserId column to SavedAnalyses (no FK to stay safe with existing data)
+        await neon.ExecuteAsync(@"
+            ALTER TABLE ""SavedAnalyses""
+            ADD COLUMN IF NOT EXISTS ""UserId"" TEXT");
+
+        // Add ContentHash column for dedup caching
+        await neon.ExecuteAsync(@"
+            ALTER TABLE ""SavedAnalyses""
+            ADD COLUMN IF NOT EXISTS ""ContentHash"" TEXT");
+
+        // Add IsPublic column for shareable links
+        await neon.ExecuteAsync(@"
+            ALTER TABLE ""SavedAnalyses""
+            ADD COLUMN IF NOT EXISTS ""IsPublic"" BOOLEAN NOT NULL DEFAULT FALSE");
+
+        logger.LogInformation("DB migration complete");
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "DB migration failed — app will continue but auth/history may not work");
+    }
+}

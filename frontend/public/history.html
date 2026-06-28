@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VerifyNews | Verification Log</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/theme.js"></script>
+<script src="/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { background-color: #02040A; color: #e2e2e2; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  .glass-card { background: rgba(11,18,33,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+  .mesh-bg {
+    background-image: radial-gradient(at 0% 0%, rgba(171,199,255,0.05) 0px, transparent 50%),
+                      radial-gradient(at 100% 100%, rgba(0,221,221,0.03) 0px, transparent 50%);
+  }
+  .row-enter { animation: fadeSlideIn 0.3s ease forwards; }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .verdict-true  { background: rgba(0,221,221,0.12); color: #00dddd; border-color: rgba(0,221,221,0.3); }
+  .verdict-fake  { background: rgba(255,180,171,0.12); color: #ffb4ab; border-color: rgba(255,180,171,0.3); }
+  .verdict-uncertain { background: rgba(191,194,255,0.12); color: #bfc2ff; border-color: rgba(191,194,255,0.3); }
+  .score-high { color: #00dddd; }
+  .score-mid  { color: #abc7ff; }
+  .score-low  { color: #ffb4ab; }
+  .btn-ghost { transition: all .15s ease; }
+  .btn-ghost:hover { background: rgba(171,199,255,0.08); }
+  .btn-danger:hover { background: rgba(255,180,171,0.12); color: #ffb4ab; }
+  .search-input { background: rgba(11,18,33,0.7); border: 1px solid rgba(255,255,255,0.08); color: #e2e2e2; }
+  .search-input::placeholder { color: #8b91a0; }
+  .search-input:focus { outline: none; border-color: rgba(171,199,255,0.4); box-shadow: 0 0 0 2px rgba(171,199,255,0.1); }
+  .filter-btn { transition: all .15s; }
+  .filter-btn.active { background: rgba(171,199,255,0.15); color: #abc7ff; border-color: rgba(171,199,255,0.4); }
+  .stat-card { transition: border-color .2s; }
+  .stat-card:hover { border-color: rgba(171,199,255,0.2); }
+  .empty-state { animation: fadeSlideIn 0.4s ease; }
+  .confirm-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+  .confirm-overlay.show { display: flex; }
+</style>
+</head>
+<body class="font-body-md text-body-md mesh-bg min-h-screen">
+
+<!-- Header -->
+<header class="bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 shadow-sm sticky top-0 z-50">
+  <div class="flex justify-between items-center w-full px-margin py-xs max-w-7xl mx-auto">
+    <div class="flex items-center gap-sm">
+      <a href="/" class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary tracking-tight">VerifyNews</a>
+      <span class="bg-tertiary-container/30 text-tertiary text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Forensic v4.2</span>
+    </div>
+    <nav class="hidden md:flex items-center gap-md">
+      <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="/">Analyze</a>
+      <a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1" href="/history.html">History</a>
+      <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="/results.html">Last Report</a>
+    </nav>
+    <div class="flex items-center gap-sm">
+      <button onclick="refreshData()" class="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors px-sm py-xs rounded-lg btn-ghost text-label-md font-label-md">
+        <span class="material-symbols-outlined text-[18px]" id="refresh-icon">refresh</span> Refresh
+      </button>
+      <div id="header-user-info" class="hidden items-center gap-sm">
+        <span id="header-user-name" class="text-label-sm text-on-surface-variant hidden md:inline"></span>
+        <button onclick="logoutAndRedirect()" class="flex items-center gap-xs text-on-surface-variant hover:text-error transition-colors px-sm py-xs rounded-lg btn-ghost text-label-md font-label-md" title="Sign out">
+          <span class="material-symbols-outlined text-[18px]">logout</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Auth wall — shown when not logged in -->
+<div id="auth-wall" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-surface/95 backdrop-blur-sm">
+  <div class="glass-card rounded-2xl p-lg max-w-sm w-full mx-4 flex flex-col items-center text-center gap-md">
+    <div class="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center">
+      <span class="material-symbols-outlined text-primary text-[36px]">lock</span>
+    </div>
+    <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-white">Sign in to view History</h2>
+    <p class="text-on-surface-variant font-body-md text-body-md">Your verification log is private. Sign in to access your saved analyses.</p>
+    <a href="/" class="w-full bg-primary text-on-primary py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all text-center">
+      Go to Sign In
+    </a>
+  </div>
+</div>
+
+<main class="max-w-7xl mx-auto px-margin py-xl">
+
+  <!-- Page Title + Stats Row -->
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-md mb-xl">
+    <div>
+      <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary text-[36px]">fact_check</span>
+        Verification Log
+      </h1>
+      <p class="text-on-surface-variant font-body-md mt-xs">All news analyses stored in the forensic database</p>
+    </div>
+    <div class="grid grid-cols-4 gap-md" id="stats-row">
+      <div class="glass-card stat-card border border-outline-variant/20 rounded-xl p-md text-center">
+        <div class="text-2xl font-black text-on-surface" id="stat-total">—</div>
+        <div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Total</div>
+      </div>
+      <div class="glass-card stat-card border border-outline-variant/20 rounded-xl p-md text-center">
+        <div class="text-2xl font-black text-tertiary" id="stat-true">—</div>
+        <div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Likely True</div>
+      </div>
+      <div class="glass-card stat-card border border-outline-variant/20 rounded-xl p-md text-center">
+        <div class="text-2xl font-black text-error" id="stat-fake">—</div>
+        <div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Likely Fake</div>
+      </div>
+      <div class="glass-card stat-card border border-outline-variant/20 rounded-xl p-md text-center">
+        <div class="text-2xl font-black text-secondary" id="stat-uncertain">—</div>
+        <div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Uncertain</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search + Filter Bar -->
+  <div class="flex flex-col sm:flex-row gap-md mb-lg">
+    <div class="relative flex-1">
+      <span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+      <input id="search-input" type="text" placeholder="Search by title, URL or verdict..."
+        class="search-input w-full rounded-xl pl-[44px] pr-md py-sm font-body-md text-body-md transition-all"/>
+    </div>
+    <div class="flex gap-xs">
+      <button class="filter-btn active border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="all">All</button>
+      <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="likely_true">True</button>
+      <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="likely_fake">Fake</button>
+      <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="uncertain">Uncertain</button>
+    </div>
+  </div>
+
+  <!-- Analytics Charts — hidden until data loads -->
+  <div id="analytics-section" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-lg mb-lg">
+    <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+      <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Verdict Distribution</h3>
+      <div class="flex items-center justify-center" style="height:220px">
+        <canvas id="verdict-chart"></canvas>
+      </div>
+    </div>
+    <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+      <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Credibility Score Trend (last 20)</h3>
+      <div style="height:220px">
+        <canvas id="trend-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div class="glass-card rounded-2xl border border-outline-variant/20 overflow-hidden">
+    <!-- Table Header -->
+    <div class="hidden md:grid grid-cols-[1fr_90px_100px_130px_44px_44px] gap-md px-md py-sm border-b border-outline-variant/10 bg-surface-container/60">
+      <span class="text-[11px] uppercase text-outline tracking-widest font-bold">Analysis</span>
+      <span class="text-[11px] uppercase text-outline tracking-widest font-bold text-center">Score</span>
+      <span class="text-[11px] uppercase text-outline tracking-widest font-bold">Verdict</span>
+      <span class="text-[11px] uppercase text-outline tracking-widest font-bold">Date</span>
+      <span></span>
+      <span></span>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="flex flex-col items-center justify-center py-xl gap-md">
+      <div class="relative w-12 h-12">
+        <svg class="w-full h-full" style="animation:spin 1.2s linear infinite" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="16" fill="transparent" stroke="rgba(171,199,255,0.1)" stroke-width="3"/>
+          <circle cx="20" cy="20" r="16" fill="transparent" stroke="#abc7ff" stroke-width="3" stroke-dasharray="40 60" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="text-outline font-label-md text-label-md">Loading verification log...</span>
+    </div>
+
+    <!-- Records List -->
+    <div id="records-list" class="hidden divide-y divide-outline-variant/10"></div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden empty-state flex flex-col items-center justify-center py-xl gap-md text-center px-margin">
+      <span class="material-symbols-outlined text-outline text-[48px]">manage_search</span>
+      <p class="text-on-surface-variant font-label-md text-label-md" id="empty-message">No analyses found</p>
+      <a href="/" class="text-primary font-label-md text-label-md hover:underline">Run your first analysis →</a>
+    </div>
+  </div>
+
+  <!-- Results count -->
+  <div class="mt-md text-right text-[12px] text-outline" id="results-count"></div>
+</main>
+
+<!-- Delete Confirm Overlay -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg max-w-sm w-full mx-4">
+    <h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface mb-xs">Delete Analysis?</h3>
+    <p class="text-on-surface-variant font-body-md text-body-md mb-lg">This will permanently remove the record from the database.</p>
+    <div class="flex gap-md justify-end">
+      <button onclick="closeConfirm()" class="px-md py-xs rounded-xl border border-outline-variant/30 text-on-surface-variant font-label-md text-label-md btn-ghost">Cancel</button>
+      <button onclick="confirmDelete()" class="px-md py-xs rounded-xl bg-error-container text-on-error-container font-label-md text-label-md hover:brightness-110 transition-all">Delete</button>
+    </div>
+  </div>
+</div>
+
+<footer class="bg-surface-container-lowest border-t border-outline-variant/10 mt-xl">
+  <div class="w-full px-margin py-lg flex justify-between items-center max-w-7xl mx-auto">
+    <span class="font-headline-lg text-headline-lg text-on-surface">VerifyNews</span>
+    <span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">© 2024 Forensic Intelligence Unit.</span>
+  </div>
+</footer>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+let allRecords = [];
+let filtered = [];
+let activeFilter = 'all';
+let pendingDeleteId = null;
+
+// Auth guard — show wall if not logged in
+(function initHistoryAuth() {
+    if (!isLoggedIn()) {
+        document.getElementById('auth-wall').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        return;
+    }
+    const { user } = getAuth();
+    const userInfoDiv = document.getElementById('header-user-info');
+    const userNameEl = document.getElementById('header-user-name');
+    userInfoDiv.classList.remove('hidden');
+    userInfoDiv.classList.add('flex');
+    if (userNameEl) userNameEl.textContent = user?.name || user?.email || '';
+})();
+
+function logoutAndRedirect() {
+    clearAuth();
+    window.location.href = '/';
+}
+
+function verdictClass(v) {
+  if (!v) return 'verdict-uncertain';
+  if (v.includes('true')) return 'verdict-true';
+  if (v.includes('fake')) return 'verdict-fake';
+  return 'verdict-uncertain';
+}
+function verdictLabel(v) {
+  if (!v) return 'Uncertain';
+  if (v.includes('true')) return 'Likely True';
+  if (v.includes('fake')) return 'Likely Fake';
+  return 'Uncertain';
+}
+function scoreClass(s) {
+  if (s >= 70) return 'score-high';
+  if (s >= 40) return 'score-mid';
+  return 'score-low';
+}
+function typeIcon(t) {
+  return t === 'url' ? 'link' : 'article';
+}
+
+function renderRecords(records) {
+  const list = document.getElementById('records-list');
+  const empty = document.getElementById('empty-state');
+  const countEl = document.getElementById('results-count');
+
+  if (records.length === 0) {
+    list.classList.add('hidden');
+    empty.classList.remove('hidden');
+    document.getElementById('empty-message').textContent =
+      activeFilter === 'all' ? 'No analyses yet — run one from the main page' : 'No analyses match this filter';
+    countEl.textContent = '';
+    return;
+  }
+
+  empty.classList.add('hidden');
+  list.classList.remove('hidden');
+  countEl.textContent = `Showing ${records.length} of ${allRecords.length} records`;
+
+  list.innerHTML = records.map((r, i) => {
+    const vClass = verdictClass(r.verdict);
+    const vLabel = verdictLabel(r.verdict);
+    const sClass = scoreClass(r.score);
+    const shortTitle = (r.title || 'Untitled').length > 52
+      ? (r.title || 'Untitled').slice(0, 52) + '…'
+      : (r.title || 'Untitled');
+    const domain = r.url ? (() => { try { return new URL(r.url).hostname; } catch { return ''; } })() : '';
+    return `<div class="row-enter grid grid-cols-1 md:grid-cols-[1fr_90px_100px_130px_44px_44px] gap-md px-md py-sm items-center hover:bg-surface-container/40 transition-colors group" style="animation-delay:${Math.min(i * 30, 300)}ms">
+      <div class="flex items-center gap-sm min-w-0">
+        <span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0">${typeIcon(r.contentType)}</span>
+        <div class="min-w-0">
+          <p class="text-on-surface font-label-md text-label-md truncate">${shortTitle}</p>
+          ${domain ? `<p class="text-[11px] text-outline truncate font-mono">${domain}</p>` : ''}
+        </div>
+      </div>
+      <div class="flex items-center justify-start md:justify-center gap-xs">
+        <span class="font-mono font-bold text-lg ${sClass}">${Math.round(r.score)}%</span>
+      </div>
+      <div>
+        <span class="border rounded-full px-sm py-0.5 text-[10px] uppercase font-bold tracking-wider ${vClass}">${vLabel}</span>
+      </div>
+      <div class="text-[12px] text-outline leading-tight">
+        <div>${r.formattedDate || r.relativeDate || '—'}</div>
+      </div>
+      <button onclick="viewReport('${r.id}')" title="View report"
+        class="btn-ghost rounded-lg p-xs text-on-surface-variant hover:text-primary transition-colors flex-shrink-0">
+        <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+      </button>
+      <button onclick="askDelete('${r.id}')" title="Delete"
+        class="btn-ghost btn-danger rounded-lg p-xs text-on-surface-variant transition-colors flex-shrink-0">
+        <span class="material-symbols-outlined text-[18px]">delete</span>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function applyFilters() {
+  const query = document.getElementById('search-input').value.toLowerCase().trim();
+  filtered = allRecords.filter(r => {
+    const matchFilter = activeFilter === 'all' || r.verdict === activeFilter;
+    const matchSearch = !query ||
+      (r.title || '').toLowerCase().includes(query) ||
+      (r.url || '').toLowerCase().includes(query) ||
+      (r.verdict || '').toLowerCase().includes(query);
+    return matchFilter && matchSearch;
+  });
+  renderRecords(filtered);
+}
+
+function updateStats(records) {
+  const total = records.length;
+  const trueCount = records.filter(r => r.verdict === 'likely_true').length;
+  const fakeCount = records.filter(r => r.verdict === 'likely_fake').length;
+  const uncertainCount = records.filter(r => r.verdict === 'uncertain').length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-true').textContent = trueCount;
+  document.getElementById('stat-fake').textContent = fakeCount;
+  document.getElementById('stat-uncertain').textContent = uncertainCount;
+  if (total > 0) updateCharts(records, trueCount, fakeCount, uncertainCount);
+}
+
+let _verdictChart = null, _trendChart = null;
+
+function updateCharts(records, trueCount, fakeCount, uncertainCount) {
+  const section = document.getElementById('analytics-section');
+  if (section) section.classList.remove('hidden');
+
+  const chartDefaults = {
+    color: '#8b91a0',
+    font: { family: 'Inter', size: 12 }
+  };
+
+  // Verdict distribution doughnut
+  const ctx1 = document.getElementById('verdict-chart');
+  if (ctx1) {
+    if (_verdictChart) _verdictChart.destroy();
+    _verdictChart = new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: ['Likely True', 'Likely Fake', 'Uncertain'],
+        datasets: [{ data: [trueCount, fakeCount, uncertainCount],
+          backgroundColor: ['rgba(0,221,221,0.7)', 'rgba(255,180,171,0.7)', 'rgba(191,194,255,0.7)'],
+          borderColor: ['#00dddd', '#ffb4ab', '#bfc2ff'], borderWidth: 1.5 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { color: '#e2e2e2', ...chartDefaults } } }
+      }
+    });
+  }
+
+  // Score trend line (last 20 by date)
+  const ctx2 = document.getElementById('trend-chart');
+  if (ctx2) {
+    const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-20);
+    const labels = sorted.map(r => { const d = new Date(r.date); return `${d.getMonth()+1}/${d.getDate()}`; });
+    const scores = sorted.map(r => Math.round(r.score));
+    if (_trendChart) _trendChart.destroy();
+    _trendChart = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: 'Score', data: scores, borderColor: '#abc7ff',
+          backgroundColor: 'rgba(171,199,255,0.08)', fill: true, tension: 0.4,
+          pointBackgroundColor: '#abc7ff', pointRadius: 3 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, ticks: { color: '#8b91a0', stepSize: 25 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { ticks: { color: '#8b91a0', maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+}
+
+async function loadData() {
+  if (!isLoggedIn()) return;
+  try {
+    const res = await authFetch('/api/Analysis/recent?count=200');
+    if (res.status === 401) return; // handled globally by authFetch
+    if (!res.ok) throw new Error('Failed to load');
+    const data = await res.json();
+    allRecords = Array.isArray(data) ? data : [];
+    updateStats(allRecords);
+    applyFilters();
+  } catch (e) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('empty-message').textContent = 'Could not load history. Is the backend running?';
+  } finally {
+    document.getElementById('loading-state').classList.add('hidden');
+  }
+}
+
+async function refreshData() {
+  const icon = document.getElementById('refresh-icon');
+  icon.style.animation = 'spin 0.6s linear infinite';
+  document.getElementById('records-list').classList.add('hidden');
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('loading-state').classList.remove('hidden');
+  await loadData();
+  icon.style.animation = '';
+}
+
+function viewReport(id) {
+  const record = allRecords.find(r => r.id === id);
+  if (!record) return;
+
+  if (record.resultJson) {
+    try {
+      const result = JSON.parse(record.resultJson);
+      sessionStorage.setItem('analysisResult', JSON.stringify(result));
+      sessionStorage.setItem('analysisId', record.id);
+      window.location.href = '/results.html';
+      return;
+    } catch {}
+  }
+
+  // No resultJson — show a minimal result from what we have
+  const minimal = {
+    score: record.score,
+    verdict: record.verdict,
+    explanation: `Score: ${Math.round(record.score)}% — ${verdictLabel(record.verdict)}. Full report not available for this record.`,
+    factors: [],
+    redFlags: [],
+    credibilitySignals: [],
+    claims: [],
+    evidencePoints: [],
+    biasDetection: null
+  };
+  sessionStorage.setItem('analysisResult', JSON.stringify(minimal));
+  sessionStorage.setItem('analysisId', record.id);
+  window.location.href = '/results.html';
+}
+
+function askDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+
+function closeConfirm() {
+  pendingDeleteId = null;
+  document.getElementById('confirm-overlay').classList.remove('show');
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  const id = pendingDeleteId;
+  closeConfirm();
+
+  try {
+    const res = await authFetch('/api/Analysis/' + id, { method: 'DELETE' });
+    if (res.ok || res.status === 204) {
+      allRecords = allRecords.filter(r => r.id !== id);
+      updateStats(allRecords);
+      applyFilters();
+    }
+  } catch (e) {
+    alert('Delete failed. Check that the backend is running.');
+  }
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    applyFilters();
+  });
+});
+
+// Search
+let searchTimer;
+document.getElementById('search-input').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applyFilters, 200);
+});
+
+// Close confirm on backdrop
+document.getElementById('confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+loadData();
+</script>
+</body>
+</html>

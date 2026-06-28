@@ -31,7 +31,7 @@ export default function DatabaseViewer({ refreshTrigger = 0 }: DatabaseViewerPro
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch("http://localhost:5000/api/analysis/database")
+      const response = await fetch("/api/Analysis/database")
 
       if (!response.ok) {
         throw new Error(`Failed to fetch records: ${response.statusText}`)

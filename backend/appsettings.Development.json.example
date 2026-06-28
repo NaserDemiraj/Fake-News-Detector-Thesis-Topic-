@@ -1,0 +1,26 @@
+{
+  "Neon": {
+    "HttpUrl": "https://ep-xxxx.neon.tech/sql",
+    "ConnectionUri": "postgresql://user:pass@ep-xxxx.neon.tech/neondb?sslmode=require"
+  },
+  "Groq": {
+    "ApiKey": "gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "Model": "llama-3.1-8b-instant"
+  },
+  "Ollama": {
+    "Enabled": false,
+    "BaseUrl": "http://localhost:11434",
+    "Model": "llama3.2:1b"
+  },
+  "Gemini": {
+    "ApiKey": "",
+    "Model": "gemini-2.0-flash"
+  },
+  "Jwt": {
+    "Key": "REPLACE-WITH-RANDOM-64-CHAR-SECRET-USE-openssl-rand-base64-48",
+    "Issuer": "FakeNewsDetector",
+    "Audience": "FakeNewsDetector"
+  },
+  "AllowedOrigins": "http://localhost:3000",
+  "AllowedHosts": "*"
+}

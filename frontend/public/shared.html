@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VerifyNews | Shared Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { background-color: #02040A; color: #e2e2e2; -webkit-font-smoothing: antialiased; }
+  .glass-card { background: rgba(11,18,33,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+  .mesh-bg { background-image: radial-gradient(at 0% 0%, rgba(171,199,255,0.05) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,221,221,0.03) 0px, transparent 50%); }
+  .verdict-true  { color: #00dddd; }
+  .verdict-fake  { color: #ffb4ab; }
+  .verdict-uncertain { color: #bfc2ff; }
+</style>
+</head>
+<body class="font-body-md text-body-md mesh-bg min-h-screen">
+
+<header class="bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 sticky top-0 z-50">
+  <div class="max-w-4xl mx-auto px-margin py-sm flex items-center justify-between">
+    <a href="/" class="flex items-center gap-sm">
+      <span class="material-symbols-outlined text-tertiary text-[24px]">fact_check</span>
+      <span class="font-headline-lg text-[20px] text-on-surface font-bold">VerifyNews</span>
+    </a>
+    <span class="text-label-sm text-outline uppercase tracking-widest">Shared Analysis</span>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-margin py-xl" id="content">
+  <!-- Loading state -->
+  <div id="loading" class="flex flex-col items-center justify-center py-xl gap-md">
+    <div class="w-10 h-10 border-2 border-primary border-t-transparent rounded-full" style="animation: spin 1s linear infinite"></div>
+    <p class="text-outline font-label-md">Loading analysis…</p>
+  </div>
+
+  <!-- Error state -->
+  <div id="error-state" class="hidden flex flex-col items-center justify-center py-xl gap-md text-center">
+    <span class="material-symbols-outlined text-outline text-[48px]">broken_image</span>
+    <h2 class="font-headline-lg text-headline-lg text-on-surface">Analysis not found</h2>
+    <p class="text-on-surface-variant">This link may be invalid or the analysis was made private.</p>
+    <a href="/" class="mt-md bg-primary text-on-primary px-lg py-sm rounded-xl font-label-md text-label-md hover:brightness-110 transition-all">
+      Run Your Own Analysis
+    </a>
+  </div>
+
+  <!-- Result content -->
+  <div id="result-content" class="hidden space-y-lg">
+    <!-- Banner -->
+    <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg flex flex-col sm:flex-row items-start sm:items-center gap-md">
+      <div class="flex-1">
+        <p class="text-[11px] uppercase text-outline tracking-widest mb-xs">Forensic Verdict</p>
+        <h1 id="verdict-text" class="text-[40px] font-black uppercase tracking-widest verdict-uncertain">Analyzing…</h1>
+        <p class="text-on-surface-variant font-body-md mt-xs" id="title-text"></p>
+      </div>
+      <div class="text-center">
+        <div class="text-5xl font-black text-on-surface" id="score-text">—</div>
+        <div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Credibility</div>
+      </div>
+    </div>
+
+    <!-- Explanation -->
+    <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg">
+      <h3 class="text-[11px] uppercase text-outline tracking-widest mb-sm">Summary</h3>
+      <p class="text-on-surface font-body-md leading-relaxed" id="explanation-text"></p>
+    </div>
+
+    <!-- Two-col: Red Flags + Credibility Signals -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-lg">
+      <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest mb-sm flex items-center gap-xs">
+          <span class="material-symbols-outlined text-error text-[16px]">warning</span> Red Flags
+        </h3>
+        <ul id="red-flags" class="space-y-xs text-body-md"></ul>
+      </div>
+      <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest mb-sm flex items-center gap-xs">
+          <span class="material-symbols-outlined text-tertiary text-[16px]">verified</span> Credibility Signals
+        </h3>
+        <ul id="cred-signals" class="space-y-xs text-body-md"></ul>
+      </div>
+    </div>
+
+    <!-- Bias -->
+    <div class="glass-card rounded-2xl border border-outline-variant/20 p-lg">
+      <h3 class="text-[11px] uppercase text-outline tracking-widest mb-md">Bias Detection</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-md text-center">
+        <div><div class="text-xl font-black text-on-surface" id="bias-emo">—</div><div class="text-[11px] uppercase text-outline mt-xs">Emotional Lang.</div></div>
+        <div><div class="text-xl font-black text-on-surface" id="bias-fm">—</div><div class="text-[11px] uppercase text-outline mt-xs">Fear Mongering</div></div>
+        <div><div class="text-xl font-black text-on-surface" id="bias-pol">—</div><div class="text-[11px] uppercase text-outline mt-xs">Political Bias</div></div>
+        <div><div class="text-xl font-black text-on-surface" id="bias-clarity">—</div><div class="text-[11px] uppercase text-outline mt-xs">Clarity</div></div>
+      </div>
+    </div>
+
+    <!-- Footer CTA -->
+    <div class="glass-card rounded-2xl border border-tertiary/20 p-lg flex flex-col sm:flex-row items-center gap-md justify-between bg-tertiary/5">
+      <div>
+        <p class="font-label-md text-label-md text-on-surface font-semibold">Want to analyse your own content?</p>
+        <p class="text-on-surface-variant text-sm mt-xs">VerifyNews uses AI to detect fake news, bias, and misinformation.</p>
+      </div>
+      <a href="/" class="flex-shrink-0 bg-tertiary text-on-tertiary px-lg py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all">
+        Try it free →
+      </a>
+    </div>
+
+    <p class="text-center text-outline text-xs" id="analysis-date"></p>
+  </div>
+</main>
+
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+<script>
+(async function() {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    if (!id) { showError(); return; }
+
+    try {
+        const res = await fetch('/api/Analysis/public/' + id);
+        if (!res.ok) { showError(); return; }
+        const data = await res.json();
+        const r = data.result || {};
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('result-content').classList.remove('hidden');
+
+        // Verdict
+        const verdictMap = { likely_true: 'Likely True', likely_fake: 'Likely Fake', uncertain: 'Uncertain' };
+        const verdictClass = { likely_true: 'verdict-true', likely_fake: 'verdict-fake', uncertain: 'verdict-uncertain' };
+        const vEl = document.getElementById('verdict-text');
+        vEl.textContent = verdictMap[data.verdict] || 'Uncertain';
+        vEl.className = vEl.className.replace(/verdict-\w+/, '') + ' ' + (verdictClass[data.verdict] || 'verdict-uncertain');
+
+        // Score
+        document.getElementById('score-text').textContent = Math.round(data.score || r.score || 0) + '%';
+        document.getElementById('title-text').textContent = data.title || data.url || '';
+        document.getElementById('explanation-text').textContent = r.explanation || r.summary || 'No explanation provided.';
+        document.getElementById('analysis-date').textContent = 'Analysed on ' + (data.date || '');
+
+        // Red flags
+        const rfEl = document.getElementById('red-flags');
+        (r.redFlags || []).forEach(f => {
+            const li = document.createElement('li');
+            li.className = 'text-error text-sm';
+            li.textContent = f;
+            rfEl.appendChild(li);
+        });
+        if (!r.redFlags?.length) rfEl.innerHTML = '<li class="text-outline text-sm">None detected</li>';
+
+        // Credibility signals
+        const csEl = document.getElementById('cred-signals');
+        (r.credibilitySignals || []).forEach(s => {
+            const li = document.createElement('li');
+            li.className = 'text-tertiary text-sm';
+            li.textContent = s;
+            csEl.appendChild(li);
+        });
+        if (!r.credibilitySignals?.length) csEl.innerHTML = '<li class="text-outline text-sm">None detected</li>';
+
+        // Bias
+        const b = r.biasDetection || {};
+        document.getElementById('bias-emo').textContent = (b.emotionalLanguageScore ?? '—') + (b.emotionalLanguageScore != null ? '%' : '');
+        document.getElementById('bias-fm').textContent = b.fearMongering != null ? (b.fearMongering ? 'Yes' : 'No') : '—';
+        document.getElementById('bias-pol').textContent = b.politicalBias || '—';
+        document.getElementById('bias-clarity').textContent = b.clarity || '—';
+
+        // Page title
+        document.title = 'VerifyNews | ' + (verdictMap[data.verdict] || 'Analysis');
+    } catch { showError(); }
+
+    function showError() {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+    }
+})();
+</script>
+</body>
+</html>

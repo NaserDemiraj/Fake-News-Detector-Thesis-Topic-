@@ -277,6 +277,7 @@ JSON:
         private static AnalysisResult MockAnalysis() => new()
         {
             Success = true,
+            IsMock = true,
             Verdict = "likely_fake",
             Score = 35,
             Confidence = 0.72,

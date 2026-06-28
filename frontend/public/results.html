@@ -4,101 +4,11 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>VerifyNews | Deep Forensic Report</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/theme.js"></script>
+<script src="/auth.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "on-primary-fixed": "#001b3f",
-                        "on-error": "#690005",
-                        "primary-fixed": "#d7e2ff",
-                        "surface-variant": "#333535",
-                        "on-primary-fixed-variant": "#004590",
-                        "on-surface-variant": "#c1c6d7",
-                        "on-tertiary-fixed-variant": "#004f4f",
-                        "inverse-on-surface": "#2f3131",
-                        "outline": "#8b91a0",
-                        "secondary-fixed": "#e0e0ff",
-                        "on-background": "#e2e2e2",
-                        "background": "#02040A",
-                        "tertiary": "#00dddd",
-                        "on-secondary-fixed-variant": "#3239a3",
-                        "surface-dim": "#121414",
-                        "surface-bright": "#37393a",
-                        "secondary-fixed-dim": "#bfc2ff",
-                        "secondary": "#bfc2ff",
-                        "surface-container-low": "#1a1c1c",
-                        "surface-tint": "#abc7ff",
-                        "error": "#ffb4ab",
-                        "primary": "#abc7ff",
-                        "on-tertiary": "#003737",
-                        "on-primary-container": "#002859",
-                        "surface-container-highest": "#333535",
-                        "inverse-surface": "#e2e2e2",
-                        "primary-fixed-dim": "#abc7ff",
-                        "secondary-container": "#3239a3",
-                        "primary-container": "#448fff",
-                        "inverse-primary": "#005cbc",
-                        "on-primary": "#002f66",
-                        "surface-container-lowest": "#0c0f0f",
-                        "error-container": "#93000a",
-                        "on-tertiary-fixed": "#002020",
-                        "on-error-container": "#ffdad6",
-                        "tertiary-fixed": "#00fbfb",
-                        "surface-container": "#1e2020",
-                        "outline-variant": "#414754",
-                        "on-secondary-container": "#a9afff",
-                        "on-tertiary-container": "#002f2f",
-                        "tertiary-container": "#00a1a1",
-                        "tertiary-fixed-dim": "#00dddd",
-                        "on-secondary": "#181d8c",
-                        "surface": "#0B1221",
-                        "on-surface": "#e2e2e2",
-                        "surface-container-high": "#282a2b",
-                        "on-secondary-fixed": "#00006e"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "sm": "16px",
-                        "base": "4px",
-                        "lg": "40px",
-                        "xl": "64px",
-                        "gutter": "24px",
-                        "md": "24px",
-                        "xs": "8px",
-                        "margin": "32px"
-                    },
-                    "fontFamily": {
-                        "label-md": ["Inter"],
-                        "headline-xl": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "headline-lg-mobile": ["Inter"],
-                        "label-sm": ["Inter"],
-                        "body-md": ["Inter"],
-                        "headline-lg": ["Inter"],
-                        "mono": ["JetBrains Mono"]
-                    },
-                    "fontSize": {
-                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
-                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
-                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
-                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
-                    }
-                },
-            },
-        }
-    </script>
 <style>
         body {
             background-color: #02040A;
@@ -214,15 +124,18 @@
 <span class="bg-tertiary-container/30 text-tertiary text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Forensic v4.2</span>
 </div>
 <nav class="hidden md:flex items-center gap-md">
-<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="/">Dashboard</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="/">Analyze</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="/history.html">History</a>
 <a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1" href="/results.html">Active Report</a>
 <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#deep-scan-section">Deep Scan</a>
-<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#network-section">Network</a>
 </nav>
 <div class="flex items-center gap-sm">
 <div class="flex gap-2">
 <button onclick="downloadPDF()" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
 <span class="material-symbols-outlined text-[18px]">download</span> PDF
+                </button>
+<button onclick="downloadPNG(this)" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[18px]">image</span> PNG
                 </button>
 <button onclick="downloadJSON()" class="btn-3d flex items-center gap-xs bg-primary text-on-primary px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
 <span class="material-symbols-outlined text-[18px]">terminal</span> JSON
@@ -232,6 +145,22 @@
 </div>
 </header>
 <main class="max-w-7xl mx-auto px-margin py-xl">
+<!-- Unsaved notice — shown when DB save failed -->
+<div id="unsaved-banner" class="hidden mb-lg flex items-start gap-sm bg-orange-900/30 border border-orange-500/40 rounded-xl px-md py-sm">
+  <span class="material-symbols-outlined text-orange-400 text-xl flex-shrink-0 mt-0.5">cloud_off</span>
+  <div>
+    <p class="text-orange-300 font-label-md font-semibold text-sm">Analysis not saved</p>
+    <p class="text-orange-400/80 text-xs mt-0.5">Could not save to the database. Favorites and notes won't work for this analysis — the backend may not be connected to the database.</p>
+  </div>
+</div>
+<!-- Mock analysis warning banner — shown only when no AI key is configured -->
+<div id="mock-banner" class="hidden mb-lg flex items-start gap-sm bg-amber-900/30 border border-amber-500/40 rounded-xl px-md py-sm">
+  <span class="material-symbols-outlined text-amber-400 text-xl flex-shrink-0 mt-0.5">warning</span>
+  <div>
+    <p class="text-amber-300 font-label-md font-semibold text-sm">Demo result — AI not connected</p>
+    <p class="text-amber-400/80 text-xs mt-0.5">No AI API key is configured. This verdict is hardcoded mock data and does not reflect the actual content. Add a Groq API key or start Ollama to get real analysis.</p>
+  </div>
+</div>
 <!-- Hero Section -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-xl mb-xl items-center scroll-reveal">
 <div class="space-y-sm">
@@ -266,6 +195,55 @@
 </div>
 </div>
 </div>
+
+<!-- Favorite + Notes Bar (logged in) -->
+<div id="fav-notes-bar" class="glass-card rounded-2xl border border-outline-variant/20 p-md mb-xl flex flex-col sm:flex-row gap-md items-start sm:items-center scroll-reveal">
+  <button id="fav-btn" onclick="toggleFavorite()" class="flex items-center gap-xs px-md py-xs rounded-xl border border-outline-variant/30 text-on-surface-variant font-label-md text-label-md hover:border-primary hover:text-primary transition-all flex-shrink-0">
+    <span id="fav-icon" class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 0">star</span>
+    <span id="fav-label">Save as Favorite</span>
+  </button>
+  <button id="share-btn" onclick="toggleShare()" class="flex items-center gap-xs px-md py-xs rounded-xl border border-outline-variant/30 text-on-surface-variant font-label-md text-label-md hover:border-tertiary hover:text-tertiary transition-all flex-shrink-0">
+    <span id="share-icon" class="material-symbols-outlined text-[20px]">link</span>
+    <span id="share-label">Share</span>
+  </button>
+  <div class="flex-1 flex gap-sm w-full sm:w-auto">
+    <input id="notes-input" type="text" placeholder="Add a personal note… (e.g. 'looks clickbait')"
+      class="flex-1 bg-surface-container-low border border-outline-variant/20 rounded-xl px-md py-xs text-body-md text-on-surface placeholder-outline focus:outline-none focus:ring-2 focus:ring-primary transition-all font-body-md"/>
+    <button id="notes-save-btn" onclick="saveNotes()" class="flex items-center gap-xs bg-primary text-on-primary px-md py-xs rounded-xl font-label-md text-label-md hover:brightness-110 transition-all flex-shrink-0">
+      <span class="material-symbols-outlined text-[18px]">save</span> Save Note
+    </button>
+  </div>
+  <span id="save-status" class="hidden text-[12px] text-tertiary flex items-center gap-xs flex-shrink-0">
+    <span class="material-symbols-outlined text-[14px]">check_circle</span> Saved
+  </span>
+</div>
+
+<!-- Sign-in prompt bar (logged out) -->
+<div id="signin-prompt-bar" class="hidden glass-card rounded-2xl border border-outline-variant/20 p-md mb-xl flex items-center justify-between gap-md scroll-reveal">
+  <div class="flex items-center gap-sm text-on-surface-variant">
+    <span class="material-symbols-outlined text-outline">lock</span>
+    <span class="font-body-md text-body-md">Sign in to save favourites and add notes to this analysis.</span>
+  </div>
+  <a href="/" class="flex-shrink-0 flex items-center gap-xs bg-primary text-on-primary px-md py-xs rounded-xl font-label-md text-label-md hover:brightness-110 transition-all">
+    <span class="material-symbols-outlined text-[18px]">login</span> Sign In
+  </a>
+</div>
+
+<!-- Domain Reputation Card — only shown for URL analyses -->
+<div id="domain-stats-card" class="hidden glass-card rounded-2xl border border-outline-variant/20 p-md mb-xl scroll-reveal">
+  <div class="flex items-center gap-sm mb-sm">
+    <span class="material-symbols-outlined text-tertiary">language</span>
+    <h3 class="font-label-md text-label-md uppercase tracking-widest text-outline">Domain Reputation</h3>
+    <span id="domain-host" class="text-tertiary font-mono text-sm ml-1"></span>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-md">
+    <div class="text-center"><div class="text-xl font-black text-on-surface" id="dr-total">—</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Analyses</div></div>
+    <div class="text-center"><div class="text-xl font-black text-primary" id="dr-avg">—</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Avg Score</div></div>
+    <div class="text-center"><div class="text-xl font-black text-tertiary" id="dr-true">—</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Likely True</div></div>
+    <div class="text-center"><div class="text-xl font-black text-error" id="dr-fake">—</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Likely Fake</div></div>
+  </div>
+</div>
+
 <!-- Core Metrics -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-md mb-xl">
 <!-- Sentiment Radar -->
@@ -506,6 +484,25 @@
         const analysisId = sessionStorage.getItem('analysisId') || ('VN-' + Math.random().toString(36).slice(2, 10).toUpperCase());
         const targetScore = result.score != null ? Math.round(result.score) : 75;
 
+        // Show mock banner if the result came from the fallback mock analyser
+        if (result.isMock) {
+            const banner = document.getElementById('mock-banner');
+            if (banner) banner.classList.remove('hidden');
+        }
+
+        // Show unsaved banner if DB save failed
+        if (sessionStorage.getItem('analysisSaved') === 'false') {
+            const unsaved = document.getElementById('unsaved-banner');
+            if (unsaved) unsaved.classList.remove('hidden');
+        }
+
+        // Load domain reputation if this was a URL analysis
+        const analysisType = sessionStorage.getItem('analysisType');
+        const analysisUrl = sessionStorage.getItem('analysisUrl');
+        if (analysisUrl && (analysisType === 'url' || analysisUrl.startsWith('http'))) {
+            loadDomainStats(analysisUrl);
+        }
+
         // Session ID
         const sidEl = document.getElementById('session-id');
         if (sidEl) sidEl.textContent = 'S_ID: ' + analysisId.slice(0, 18).toUpperCase();
@@ -517,7 +514,7 @@
         document.getElementById('explanation').textContent = result.explanation || 'Analysis complete.';
 
         // Emotional Sentiment
-        const emoScore = result.bias_detection?.emotional_language_score ?? 20;
+        const emoScore = result.biasDetection?.emotionalLanguageScore ?? 20;
         const sentimentLabel = emoScore <= 25 ? 'Neutral' : emoScore <= 50 ? 'Moderate' : emoScore <= 75 ? 'High Emotion' : 'Extreme';
         const deviation = ((emoScore / 100) * 2 - 1).toFixed(2);
         const sentEl = document.getElementById('sentiment-label');
@@ -526,7 +523,7 @@
         if (devEl) devEl.textContent = (deviation >= 0 ? '+' : '') + deviation + ' Deviation';
 
         // Political Spectrum
-        const politicalBias = result.bias_detection?.political_bias ?? 'neutral';
+        const politicalBias = result.biasDetection?.politicalBias ?? 'neutral';
         let leftW = 45, rightW = 45, spectrumLabel = 'CENTER-ALIGNED';
         if (politicalBias === 'left')  { leftW = 65; rightW = 20; spectrumLabel = 'LEFT-LEANING'; }
         else if (politicalBias === 'right') { leftW = 20; rightW = 65; spectrumLabel = 'RIGHT-LEANING'; }
@@ -540,7 +537,7 @@
 
         // Risk Rings — map factors or derive from bias data
         const factors = result.factors || [];
-        const manipScore = factors[0]?.score ?? Math.min(100, (result.bias_detection?.manipulation_tactics?.length ?? 0) * 25);
+        const manipScore = factors[0]?.score ?? Math.min(100, (result.biasDetection?.manipulationTactics?.length ?? 0) * 25);
         const sentiScore = factors[1]?.score ?? emoScore;
         const integrScore = factors[2]?.score ?? targetScore;
         const manipName = (factors[0]?.name ?? 'Manip').slice(0, 8);
@@ -575,7 +572,7 @@
         // Evidence Logs
         const evidenceContainer = document.getElementById('evidence-logs-container');
         if (evidenceContainer) {
-            const evidencePoints = result.evidence_points || [];
+            const evidencePoints = result.evidencePoints || [];
             const claims = result.claims || [];
             const rawItems = evidencePoints.length > 0 ? evidencePoints : claims.map(c => ({
                 text: c.text,
@@ -611,7 +608,7 @@
         // Deep Scan — Red Flags
         const rfList = document.getElementById('red-flags-list');
         if (rfList) {
-            const flags = result.red_flags || [];
+            const flags = result.redFlags || [];
             rfList.innerHTML = flags.length > 0
                 ? flags.map(f => `<li class="flex items-start gap-sm py-xs border-b border-outline-variant/10 last:border-0"><span class="material-symbols-outlined text-error text-sm mt-0.5 flex-shrink-0">warning</span><span class="text-on-surface-variant text-sm">${f}</span></li>`).join('')
                 : '<li class="text-outline text-sm py-xs">No red flags detected</li>';
@@ -620,7 +617,7 @@
         // Deep Scan — Credibility Signals
         const csList = document.getElementById('credibility-signals-list');
         if (csList) {
-            const signals = result.credibility_signals || [];
+            const signals = result.credibilitySignals || [];
             csList.innerHTML = signals.length > 0
                 ? signals.map(s => `<li class="flex items-start gap-sm py-xs border-b border-outline-variant/10 last:border-0"><span class="material-symbols-outlined text-tertiary text-sm mt-0.5 flex-shrink-0">check_circle</span><span class="text-on-surface-variant text-sm">${s}</span></li>`).join('')
                 : '<li class="text-outline text-sm py-xs">No credibility signals detected</li>';
@@ -650,7 +647,7 @@
         // Network — Manipulation Tactics
         const tacticsEl = document.getElementById('manipulation-tactics-list');
         if (tacticsEl) {
-            const tactics = result.bias_detection?.manipulation_tactics || [];
+            const tactics = result.biasDetection?.manipulationTactics || [];
             tacticsEl.innerHTML = tactics.length > 0
                 ? tactics.map(t => `<span class="bg-error/10 text-error border border-error/20 px-sm py-1 rounded-full text-[11px] font-mono uppercase">${t.replace(/_/g, ' ')}</span>`).join('')
                 : '<span class="text-tertiary text-sm">None detected</span>';
@@ -662,11 +659,11 @@
         const clEl = document.getElementById('clarity-label');
         if (pbEl) pbEl.textContent = politicalBias.toUpperCase();
         if (fmEl) {
-            const fm = result.bias_detection?.fear_mongering ?? false;
+            const fm = result.biasDetection?.fearMongering ?? false;
             fmEl.textContent = fm ? 'Yes' : 'No';
             fmEl.className = 'font-bold ' + (fm ? 'text-error' : 'text-tertiary');
         }
-        if (clEl) clEl.textContent = result.bias_detection?.clarity || 'Unknown';
+        if (clEl) clEl.textContent = result.biasDetection?.clarity || 'Unknown';
 
         // Network — Factor Breakdown
         const factorsEl = document.getElementById('factors-breakdown');
@@ -714,9 +711,130 @@
         setTimeout(animateCounter, 400);
     });
 
-    // PDF / JSON download (defined globally so onclick attributes can access them)
+    // Favorite & Notes — state
+    let currentAnalysisId = null;
+    let isFavorite = false;
+
+    function initFavNotes() {
+        currentAnalysisId = sessionStorage.getItem('analysisId');
+
+        if (!isLoggedIn()) {
+            document.getElementById('fav-notes-bar').classList.add('hidden');
+            document.getElementById('signin-prompt-bar').classList.remove('hidden');
+            return;
+        }
+
+        if (!currentAnalysisId) return;
+
+        // Load existing state from backend
+        authFetch('/api/Analysis/recent?count=200')
+            .then(r => r.ok ? r.json() : [])
+            .then(records => {
+                const rec = Array.isArray(records) ? records.find(r => r.id === currentAnalysisId) : null;
+                if (!rec) return;
+                if (rec.isFavorite) setFavoriteUI(true);
+                if (rec.notes) document.getElementById('notes-input').value = rec.notes;
+            })
+            .catch(() => {});
+    }
+
+    function setFavoriteUI(active) {
+        isFavorite = active;
+        const icon = document.getElementById('fav-icon');
+        const label = document.getElementById('fav-label');
+        const btn = document.getElementById('fav-btn');
+        if (active) {
+            icon.style.fontVariationSettings = "'FILL' 1";
+            icon.classList.add('text-primary');
+            label.textContent = 'Favorited';
+            btn.classList.add('border-primary', 'text-primary');
+            btn.classList.remove('border-outline-variant/30', 'text-on-surface-variant');
+        } else {
+            icon.style.fontVariationSettings = "'FILL' 0";
+            icon.classList.remove('text-primary');
+            label.textContent = 'Save as Favorite';
+            btn.classList.remove('border-primary', 'text-primary');
+            btn.classList.add('border-outline-variant/30', 'text-on-surface-variant');
+        }
+    }
+
+    async function toggleFavorite() {
+        if (!isLoggedIn() || !currentAnalysisId) return;
+        const next = !isFavorite;
+        const notes = document.getElementById('notes-input').value.trim();
+        setFavoriteUI(next);
+        try {
+            const res = await authFetch('/api/Analysis/' + currentAnalysisId, {
+                method: 'PATCH',
+                body: JSON.stringify({ isFavorite: next, notes })
+            });
+            if (!res.ok) throw new Error('patch failed');
+            showSaveStatus();
+        } catch {
+            setFavoriteUI(!next);
+            alert('Failed to update favourite. Is the backend running?');
+        }
+    }
+
+    async function saveNotes() {
+        if (!isLoggedIn() || !currentAnalysisId) return;
+        const notes = document.getElementById('notes-input').value.trim();
+        const btn = document.getElementById('notes-save-btn');
+        btn.disabled = true;
+        try {
+            const res = await authFetch('/api/Analysis/' + currentAnalysisId, {
+                method: 'PATCH',
+                body: JSON.stringify({ isFavorite, notes })
+            });
+            if (!res.ok) throw new Error('patch failed');
+            showSaveStatus();
+        } catch {
+            alert('Failed to save note. Is the backend running?');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function showSaveStatus() {
+        const el = document.getElementById('save-status');
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 2000);
+    }
+
+    // Init favorites/notes after DOM is ready (analysisId is set in DOMContentLoaded)
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initFavNotes, 100); // slight delay so analysisId is set
+    });
+
+    // PDF / PNG / JSON download (defined globally so onclick attributes can access them)
     function downloadPDF() {
         window.print();
+    }
+    async function downloadPNG(btn) {
+        if (typeof html2canvas === 'undefined') {
+            alert('PNG export is loading, please try again in a moment.');
+            return;
+        }
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_top</span> ...';
+        try {
+            const canvas = await html2canvas(document.querySelector('main'), {
+                backgroundColor: '#02040A',
+                scale: 2,
+                useCORS: true,
+                ignoreElements: el => el.id === 'mock-banner' || el.id === 'unsaved-banner'
+            });
+            const link = document.createElement('a');
+            link.download = 'analysis-' + (sessionStorage.getItem('analysisId') || 'report').slice(0, 16) + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (e) {
+            alert('PNG export failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
     }
     function downloadJSON() {
         const raw = sessionStorage.getItem('analysisResult');
@@ -729,6 +847,69 @@
         a.download = 'analysis-' + id.slice(0, 16) + '.json';
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    let _isPublic = false;
+
+    async function toggleShare() {
+        if (!isLoggedIn() || !currentAnalysisId) {
+            alert('Sign in to share this analysis.');
+            return;
+        }
+        const next = !_isPublic;
+        const btn = document.getElementById('share-btn');
+        btn.disabled = true;
+        try {
+            const res = await authFetch('/api/Analysis/' + currentAnalysisId + '/share', {
+                method: 'PATCH',
+                body: JSON.stringify({ isPublic: next })
+            });
+            if (!res.ok) throw new Error('share failed');
+            _isPublic = next;
+            const icon = document.getElementById('share-icon');
+            const label = document.getElementById('share-label');
+            if (_isPublic) {
+                icon.textContent = 'link_off';
+                label.textContent = 'Unshare';
+                btn.classList.add('border-tertiary', 'text-tertiary');
+                const link = window.location.origin + '/shared.html?id=' + currentAnalysisId;
+                await navigator.clipboard.writeText(link).catch(() => {});
+                showToast('Public link copied to clipboard!', 'check_circle');
+            } else {
+                icon.textContent = 'link';
+                label.textContent = 'Share';
+                btn.classList.remove('border-tertiary', 'text-tertiary');
+                showToast('Link removed — analysis is now private.', 'lock');
+            }
+        } catch {
+            showToast('Could not update sharing status.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function showToast(msg, icon = 'info') {
+        const t = document.createElement('div');
+        t.innerHTML = `<span class="material-symbols-outlined text-[16px]">${icon}</span> ${msg}`;
+        t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-xs bg-surface-container-high text-on-surface border border-outline-variant/30 px-md py-sm rounded-xl font-label-md text-label-md shadow-xl';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
+    async function loadDomainStats(url) {
+        try {
+            const host = new URL(url).hostname;
+            document.getElementById('domain-host').textContent = host;
+            const res = await fetch('/api/Analysis/domain-stats?host=' + encodeURIComponent(host));
+            if (!res.ok) return;
+            const s = await res.json();
+            if (s.totalAnalyses === 0) return;
+            document.getElementById('domain-stats-card').classList.remove('hidden');
+            document.getElementById('dr-total').textContent = s.totalAnalyses;
+            document.getElementById('dr-avg').textContent = Math.round(s.averageScore) + '%';
+            document.getElementById('dr-true').textContent = s.likelyTrueCount;
+            document.getElementById('dr-fake').textContent = s.likelyFakeCount;
+        } catch { /* silently ignore */ }
     }
 </script>
 </body></html>
