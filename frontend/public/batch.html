@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VerifyNews | Batch Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/theme.js"></script>
+<script src="/auth.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { background-color: #02040A; color: #e2e2e2; -webkit-font-smoothing: antialiased; }
+  .glass-card { background: rgba(11,18,33,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+  .mesh-bg { background-image: radial-gradient(at 0% 0%, rgba(171,199,255,0.05) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,221,221,0.03) 0px, transparent 50%); }
+  .field { background: rgba(11,18,33,0.7); border: 1px solid rgba(255,255,255,0.08); color: #e2e2e2; }
+  .field:focus { outline: none; border-color: rgba(171,199,255,0.4); box-shadow: 0 0 0 2px rgba(171,199,255,0.1); }
+  .verdict-true { color: #00dddd; } .verdict-fake { color: #ffb4ab; } .verdict-uncertain { color: #bfc2ff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="font-body-md mesh-bg min-h-screen">
+
+<header class="bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10 sticky top-0 z-50">
+  <div class="max-w-5xl mx-auto px-margin py-sm flex items-center justify-between">
+    <a href="/" class="flex items-center gap-sm">
+      <span class="material-symbols-outlined text-tertiary text-[24px]">fact_check</span>
+      <span class="font-headline-lg text-[20px] text-on-surface font-bold">VerifyNews</span>
+    </a>
+    <a href="/" class="text-on-surface-variant hover:text-primary text-label-md flex items-center gap-xs">
+      <span class="material-symbols-outlined text-[18px]">arrow_back</span> Single analysis
+    </a>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-margin py-xl">
+  <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-sm mb-xs">
+    <span class="material-symbols-outlined text-tertiary text-[36px]">table_rows</span>
+    Batch Analysis
+  </h1>
+  <p class="text-on-surface-variant font-body-md mb-lg">Analyse many URLs or claims at once. Upload a CSV (one item per row, first column used) or paste one item per line. Max 25 per run.</p>
+
+  <!-- Input panel -->
+  <div id="input-panel" class="glass-card rounded-2xl border border-outline-variant/20 p-lg mb-lg">
+    <div class="flex flex-col sm:flex-row gap-md mb-md">
+      <label class="flex-1 flex items-center justify-center gap-sm border border-dashed border-outline-variant/40 rounded-xl py-md cursor-pointer hover:border-primary transition-all">
+        <span class="material-symbols-outlined text-primary">upload_file</span>
+        <span class="font-label-md text-label-md text-on-surface-variant">Upload CSV / TXT file</span>
+        <input id="file-input" type="file" accept=".csv,.txt" class="hidden"/>
+      </label>
+    </div>
+
+    <p class="text-center text-outline text-label-sm mb-md">— or paste below (one URL/claim per line) —</p>
+
+    <textarea id="bulk-input" rows="8" placeholder="https://example.com/article-1&#10;https://example.com/article-2&#10;The earth is flat and NASA hides it"
+      class="field w-full rounded-xl px-md py-sm font-mono text-sm mb-md"></textarea>
+
+    <div class="flex items-center justify-between gap-md">
+      <span id="item-count" class="text-outline text-label-sm">0 items detected</span>
+      <button id="run-btn" onclick="runBatch()"
+        class="bg-primary text-on-primary px-lg py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all disabled:opacity-40">
+        Analyse all
+      </button>
+    </div>
+    <p id="error-msg" class="hidden text-error text-sm mt-md"></p>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-panel" class="hidden glass-card rounded-2xl border border-outline-variant/20 p-lg mb-lg text-center">
+    <div class="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-md" style="animation: spin 1s linear infinite"></div>
+    <p class="text-on-surface-variant" id="progress-text">Analysing… this may take a moment for many items.</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results-panel" class="hidden">
+    <div class="grid grid-cols-3 gap-md mb-lg">
+      <div class="glass-card border border-outline-variant/20 rounded-xl p-md text-center"><div class="text-2xl font-black text-on-surface" id="r-total">0</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Total</div></div>
+      <div class="glass-card border border-outline-variant/20 rounded-xl p-md text-center"><div class="text-2xl font-black text-tertiary" id="r-ok">0</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Succeeded</div></div>
+      <div class="glass-card border border-outline-variant/20 rounded-xl p-md text-center"><div class="text-2xl font-black text-error" id="r-fail">0</div><div class="text-[11px] uppercase text-outline tracking-widest mt-xs">Failed</div></div>
+    </div>
+
+    <div class="glass-card rounded-2xl border border-outline-variant/20 overflow-hidden">
+      <div class="hidden md:grid grid-cols-[1fr_110px_80px] gap-md px-md py-sm border-b border-outline-variant/10 bg-surface-container/60">
+        <span class="text-[11px] uppercase text-outline tracking-widest font-bold">Item</span>
+        <span class="text-[11px] uppercase text-outline tracking-widest font-bold">Verdict</span>
+        <span class="text-[11px] uppercase text-outline tracking-widest font-bold text-center">Score</span>
+      </div>
+      <div id="results-list" class="divide-y divide-outline-variant/10"></div>
+    </div>
+
+    <div class="flex gap-md mt-lg">
+      <button onclick="downloadCsv()" class="flex items-center gap-xs bg-surface-container-high text-on-surface px-md py-sm rounded-xl font-label-md text-label-md hover:brightness-110 transition-all">
+        <span class="material-symbols-outlined text-[18px]">download</span> Export results CSV
+      </button>
+      <button onclick="reset()" class="flex items-center gap-xs border border-outline-variant/30 text-on-surface-variant px-md py-sm rounded-xl font-label-md text-label-md hover:border-primary hover:text-primary transition-all">
+        <span class="material-symbols-outlined text-[18px]">restart_alt</span> New batch
+      </button>
+    </div>
+  </div>
+</main>
+
+<script>
+let lastResults = [];
+
+// --- CSV / line parsing ---
+function parseItems(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return [];
+    // Take first column of each line, strip surrounding quotes
+    let items = lines.map(line => {
+        let first = line.split(',')[0].trim();
+        if (first.startsWith('"') && first.endsWith('"')) first = first.slice(1, -1);
+        return first.trim();
+    }).filter(Boolean);
+    // Drop an obvious header row ("url", "content", "link", etc.)
+    if (items.length > 1 && /^(url|link|content|text|claim|article)$/i.test(items[0])) {
+        items = items.slice(1);
+    }
+    return items;
+}
+
+function updateCount() {
+    const items = parseItems(document.getElementById('bulk-input').value);
+    const el = document.getElementById('item-count');
+    el.textContent = items.length + ' item' + (items.length === 1 ? '' : 's') + ' detected'
+        + (items.length > 25 ? ' — only first 25 will run' : '');
+    document.getElementById('run-btn').disabled = items.length === 0;
+}
+
+document.getElementById('bulk-input').addEventListener('input', updateCount);
+
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        document.getElementById('bulk-input').value = ev.target.result.slice(0, 50000);
+        updateCount();
+    };
+    reader.readAsText(file);
+    this.value = '';
+});
+
+async function runBatch() {
+    const items = parseItems(document.getElementById('bulk-input').value).slice(0, 25);
+    const err = document.getElementById('error-msg');
+    err.classList.add('hidden');
+    if (items.length === 0) { err.textContent = 'No items to analyse.'; err.classList.remove('hidden'); return; }
+
+    document.getElementById('input-panel').classList.add('hidden');
+    document.getElementById('progress-panel').classList.remove('hidden');
+    document.getElementById('progress-text').textContent = `Analysing ${items.length} item(s)…`;
+
+    try {
+        const res = await authFetch('/api/Analysis/batch', {
+            method: 'POST',
+            body: JSON.stringify({ items: items.map(c => ({ type: '', content: c })) })
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e.detail || 'Batch analysis failed.');
+        }
+        const data = await res.json();
+        lastResults = data.results || [];
+        renderResults(data);
+    } catch (e) {
+        document.getElementById('progress-panel').classList.add('hidden');
+        document.getElementById('input-panel').classList.remove('hidden');
+        err.textContent = e.message;
+        err.classList.remove('hidden');
+    }
+}
+
+function verdictLabel(v) {
+    if (!v) return 'Uncertain';
+    if (v.includes('true')) return 'Likely True';
+    if (v.includes('fake')) return 'Likely Fake';
+    return 'Uncertain';
+}
+function verdictClass(v) {
+    if (!v) return 'verdict-uncertain';
+    if (v.includes('true')) return 'verdict-true';
+    if (v.includes('fake')) return 'verdict-fake';
+    return 'verdict-uncertain';
+}
+
+function renderResults(data) {
+    document.getElementById('progress-panel').classList.add('hidden');
+    document.getElementById('results-panel').classList.remove('hidden');
+
+    document.getElementById('r-total').textContent = data.total;
+    document.getElementById('r-ok').textContent = data.succeeded;
+    document.getElementById('r-fail').textContent = data.total - data.succeeded;
+
+    document.getElementById('results-list').innerHTML = data.results.map(r => {
+        if (r.ok) {
+            return `<div class="grid grid-cols-1 md:grid-cols-[1fr_110px_80px] gap-md px-md py-sm items-center">
+                <div class="min-w-0">
+                    <div class="text-on-surface text-body-md truncate">${escapeHtml(r.title || r.input)}</div>
+                    <div class="text-outline text-[11px] font-mono truncate">${escapeHtml(r.url || r.input)}</div>
+                </div>
+                <div class="font-label-md text-label-md ${verdictClass(r.verdict)}">${verdictLabel(r.verdict)}</div>
+                <div class="text-center font-bold text-on-surface">${Math.round(r.score)}%</div>
+            </div>`;
+        }
+        return `<div class="grid grid-cols-1 md:grid-cols-[1fr_110px_80px] gap-md px-md py-sm items-center">
+            <div class="min-w-0"><div class="text-outline text-body-md truncate">${escapeHtml(r.input)}</div></div>
+            <div class="font-label-md text-label-md text-error flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">error</span> Failed</div>
+            <div class="text-center text-outline text-[11px]">${escapeHtml(r.error || '')}</div>
+        </div>`;
+    }).join('');
+}
+
+function downloadCsv() {
+    const rows = [['input', 'title', 'url', 'verdict', 'score', 'status', 'analysisId']];
+    lastResults.forEach(r => rows.push([
+        r.input || '', r.title || '', r.url || '',
+        r.ok ? verdictLabel(r.verdict) : 'FAILED',
+        r.ok ? Math.round(r.score) : '',
+        r.ok ? 'ok' : (r.error || 'error'),
+        r.analysisId || ''
+    ]));
+    const csv = rows.map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'batch-analysis-' + Date.now() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function reset() {
+    document.getElementById('results-panel').classList.add('hidden');
+    document.getElementById('input-panel').classList.remove('hidden');
+    document.getElementById('bulk-input').value = '';
+    updateCount();
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+updateCount();
+</script>
+</body>
+</html>

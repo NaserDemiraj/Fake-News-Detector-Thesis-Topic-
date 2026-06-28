@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "VerifyNews — Fake News Detector",
+  "version": "1.0.0",
+  "description": "Analyse the current page for fake news, bias, and misinformation with one click.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://localhost:5000/*",
+    "http://localhost:3000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Analyse this page with VerifyNews"
+  }
+}

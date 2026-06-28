@@ -39,23 +39,81 @@ namespace FakeNewsDetector.Controllers
         [HttpPost]
         public async Task<IActionResult> AnalyzeNews([FromBody] AnalysisRequest request)
         {
-            if (string.IsNullOrEmpty(request.Content))
-                return Problem(title: "Validation error", detail: "Content cannot be empty", statusCode: 400);
+            var outcome = await ProcessAnalysisAsync(request.Type, request.Content);
+            if (!outcome.Ok)
+                return Problem(title: "Analysis error", detail: outcome.Error, statusCode: outcome.StatusCode);
+
+            return Ok(new { result = outcome.Result, analysisId = outcome.AnalysisId, saved = outcome.Saved, cached = outcome.Cached });
+        }
+
+        // POST /api/Analysis/batch — analyze many items at once (CSV rows / bulk)
+        [HttpPost("batch")]
+        public async Task<IActionResult> AnalyzeBatch([FromBody] BatchAnalysisRequest request)
+        {
+            if (request?.Items == null || request.Items.Count == 0)
+                return Problem(title: "Validation error", detail: "No items provided.", statusCode: 400);
+
+            const int maxItems = 25;
+            if (request.Items.Count > maxItems)
+                return Problem(title: "Too many items", detail: $"Batch is limited to {maxItems} items per request.", statusCode: 400);
+
+            var results = new List<object>(request.Items.Count);
+            var succeeded = 0;
+            foreach (var item in request.Items)
+            {
+                if (string.IsNullOrWhiteSpace(item.Content)) continue;
+
+                var type = string.IsNullOrWhiteSpace(item.Type)
+                    ? (item.Content.StartsWith("http://") || item.Content.StartsWith("https://") ? "url" : "text")
+                    : item.Type;
+
+                var outcome = await ProcessAnalysisAsync(type, item.Content);
+                if (outcome.Ok && outcome.Result != null)
+                {
+                    succeeded++;
+                    results.Add(new
+                    {
+                        ok = true,
+                        input = Truncate(item.Content, 120),
+                        title = outcome.Title,
+                        url = outcome.SourceUrl,
+                        analysisId = outcome.AnalysisId,
+                        verdict = outcome.Result.Verdict,
+                        score = outcome.Result.Score,
+                        cached = outcome.Cached
+                    });
+                }
+                else
+                {
+                    results.Add(new { ok = false, input = Truncate(item.Content, 120), error = outcome.Error });
+                }
+            }
+
+            return Ok(new { total = results.Count, succeeded, results });
+        }
+
+        // Shared analysis pipeline used by both the single and batch endpoints.
+        private async Task<AnalysisOutcome> ProcessAnalysisAsync(string type, string rawContent)
+        {
+            var outcome = new AnalysisOutcome { Type = type };
+
+            if (string.IsNullOrEmpty(rawContent))
+                return outcome.Fail("Content cannot be empty", 400);
 
             string content;
             string title;
             string sourceUrl = "";
 
-            if (request.Type == "url")
+            if (type == "url")
             {
-                if (!Uri.TryCreate(request.Content, UriKind.Absolute, out var uri) ||
+                if (!Uri.TryCreate(rawContent, UriKind.Absolute, out var uri) ||
                     (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-                    return Problem(title: "Validation error", detail: "Invalid URL format. Only http and https URLs are supported.", statusCode: 400);
+                    return outcome.Fail("Invalid URL format. Only http and https URLs are supported.", 400);
 
                 if (IsPrivateOrLocalhost(uri))
-                    return Problem(title: "Validation error", detail: "The provided URL points to a private or restricted address.", statusCode: 400);
+                    return outcome.Fail("The provided URL points to a private or restricted address.", 400);
 
-                sourceUrl = request.Content;
+                sourceUrl = rawContent;
 
                 try
                 {
@@ -63,13 +121,13 @@ namespace FakeNewsDetector.Controllers
                     httpClient.Timeout = FetchTimeout;
                     httpClient.DefaultRequestHeaders.Add("User-Agent", "FakeNewsDetector/1.0");
 
-                    using var response = await httpClient.GetAsync(request.Content, HttpCompletionOption.ResponseHeadersRead);
+                    using var response = await httpClient.GetAsync(rawContent, HttpCompletionOption.ResponseHeadersRead);
 
                     if (!response.IsSuccessStatusCode)
-                        return Problem(title: "Fetch error", detail: $"Failed to fetch URL: HTTP {(int)response.StatusCode}", statusCode: 400);
+                        return outcome.Fail($"Failed to fetch URL: HTTP {(int)response.StatusCode}", 400);
 
                     if (response.Content.Headers.ContentLength > MaxContentBytes)
-                        return Problem(title: "Content too large", detail: "The page content exceeds the 5 MB limit.", statusCode: 400);
+                        return outcome.Fail("The page content exceeds the 5 MB limit.", 400);
 
                     using var stream = await response.Content.ReadAsStreamAsync();
                     var buffer = new byte[MaxContentBytes];
@@ -78,31 +136,29 @@ namespace FakeNewsDetector.Controllers
 
                     var extracted = ExtractTextAndTitleFromHtml(htmlContent);
                     content = extracted.Text;
-                    title = string.IsNullOrEmpty(extracted.Title)
-                        ? "Article from " + uri.Host
-                        : extracted.Title;
+                    title = string.IsNullOrEmpty(extracted.Title) ? "Article from " + uri.Host : extracted.Title;
                 }
                 catch (TaskCanceledException)
                 {
-                    return Problem(title: "Timeout", detail: "The request to the URL timed out (10s limit).", statusCode: 408);
+                    return outcome.Fail("The request to the URL timed out (10s limit).", 408);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error fetching URL: {Url}", request.Content);
-                    return Problem(title: "Fetch error", detail: "Could not retrieve content from the URL.", statusCode: 400);
+                    _logger.LogError(ex, "Error fetching URL: {Url}", rawContent);
+                    return outcome.Fail("Could not retrieve content from the URL.", 400);
                 }
             }
             else
             {
-                if (request.Content.Length > 10_000)
-                    return Problem(title: "Content too long", detail: "Text input exceeds the 10,000 character limit.", statusCode: 400);
+                if (rawContent.Length > 10_000)
+                    return outcome.Fail("Text input exceeds the 10,000 character limit.", 400);
 
-                content = request.Content;
+                content = rawContent;
                 title = "Text Analysis";
             }
 
             if (string.IsNullOrWhiteSpace(content))
-                return Problem(title: "No content", detail: "No text could be extracted for analysis.", statusCode: 400);
+                return outcome.Fail("No text could be extracted for analysis.", 400);
 
             try
             {
@@ -129,16 +185,14 @@ namespace FakeNewsDetector.Controllers
                     analysisId = Guid.NewGuid().ToString();
                 }
 
-                var truncatedContent = request.Content.Length > 500
-                    ? request.Content.Substring(0, 500)
-                    : request.Content;
+                var truncatedContent = rawContent.Length > 500 ? rawContent.Substring(0, 500) : rawContent;
 
                 var savedAnalysis = new SavedAnalysis
                 {
                     Id = analysisId,
                     Title = title,
                     Url = sourceUrl,
-                    ContentType = request.Type,
+                    ContentType = type,
                     Content = truncatedContent,
                     Score = result.Score,
                     Verdict = result.Verdict,
@@ -161,14 +215,24 @@ namespace FakeNewsDetector.Controllers
                     }
                 }
 
-                return Ok(new { result, analysisId = savedAnalysis.Id, saved, cached = fromCache });
+                outcome.Ok = true;
+                outcome.Result = result;
+                outcome.AnalysisId = analysisId;
+                outcome.Saved = saved;
+                outcome.Cached = fromCache;
+                outcome.Title = title;
+                outcome.SourceUrl = sourceUrl;
+                return outcome;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error analyzing content");
-                return Problem(title: "Analysis error", detail: "An error occurred while analyzing the content. Please try again.", statusCode: 500);
+                return outcome.Fail("An error occurred while analyzing the content. Please try again.", 500);
             }
         }
+
+        private static string Truncate(string s, int max) =>
+            string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "…");
 
         [Authorize]
         [HttpGet("recent")]
@@ -402,5 +466,39 @@ namespace FakeNewsDetector.Controllers
     public class SetPublicRequest
     {
         public bool IsPublic { get; set; }
+    }
+
+    public class BatchAnalysisRequest
+    {
+        public List<BatchAnalysisItem> Items { get; set; } = new();
+    }
+
+    public class BatchAnalysisItem
+    {
+        public string Type { get; set; } = "";       // "url" | "text" | "" (auto-detect)
+        public string Content { get; set; } = "";
+    }
+
+    // Internal result holder for the shared analysis pipeline (not serialized directly)
+    internal sealed class AnalysisOutcome
+    {
+        public bool Ok;
+        public string? Error;
+        public int StatusCode = 400;
+        public AnalysisResult? Result;
+        public string AnalysisId = "";
+        public bool Saved = true;
+        public bool Cached;
+        public string Title = "";
+        public string SourceUrl = "";
+        public string Type = "text";
+
+        public AnalysisOutcome Fail(string error, int statusCode)
+        {
+            Ok = false;
+            Error = error;
+            StatusCode = statusCode;
+            return this;
+        }
     }
 }

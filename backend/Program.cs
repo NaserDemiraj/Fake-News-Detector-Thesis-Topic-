@@ -79,7 +79,12 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        // Allow configured web origins plus browser-extension origins.
+        // Safe because the API authenticates via Bearer tokens, not cookies.
+        policy.SetIsOriginAllowed(origin =>
+                  allowedOrigins.Contains(origin)
+                  || origin.StartsWith("chrome-extension://")
+                  || origin.StartsWith("moz-extension://"))
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -90,6 +95,7 @@ builder.Services.AddSingleton<NeonHttpService>();
 builder.Services.AddSingleton<INewsAnalyzerService, NewsAnalyzerService>();
 builder.Services.AddScoped<ISavedAnalysisService, SavedAnalysisService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailSender, EmailSender>();
 
 var app = builder.Build();
 
@@ -148,6 +154,34 @@ static async Task RunMigrationsAsync(WebApplication app)
         await neon.ExecuteAsync(@"
             ALTER TABLE ""SavedAnalyses""
             ADD COLUMN IF NOT EXISTS ""IsPublic"" BOOLEAN NOT NULL DEFAULT FALSE");
+
+        // Add EmailVerified column to Users
+        await neon.ExecuteAsync(@"
+            ALTER TABLE ""Users""
+            ADD COLUMN IF NOT EXISTS ""EmailVerified"" BOOLEAN NOT NULL DEFAULT FALSE");
+
+        // Refresh tokens (revocable, rotated)
+        await neon.ExecuteAsync(@"
+            CREATE TABLE IF NOT EXISTS ""RefreshTokens"" (
+                ""Id""        TEXT PRIMARY KEY,
+                ""TokenHash"" TEXT NOT NULL,
+                ""UserId""    TEXT NOT NULL,
+                ""ExpiresAt"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                ""RevokedAt"" TIMESTAMP WITH TIME ZONE,
+                ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )");
+
+        // Single-use tokens for password reset & email verification
+        await neon.ExecuteAsync(@"
+            CREATE TABLE IF NOT EXISTS ""UserTokens"" (
+                ""Id""        TEXT PRIMARY KEY,
+                ""TokenHash"" TEXT NOT NULL,
+                ""UserId""    TEXT NOT NULL,
+                ""Type""      TEXT NOT NULL,
+                ""ExpiresAt"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                ""UsedAt""    TIMESTAMP WITH TIME ZONE,
+                ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )");
 
         logger.LogInformation("DB migration complete");
     }

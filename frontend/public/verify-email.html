@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VerifyNews | Verify Email</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { background-color: #02040A; color: #e2e2e2; -webkit-font-smoothing: antialiased; }
+  .glass-card { background: rgba(11,18,33,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+  .mesh-bg { background-image: radial-gradient(at 0% 0%, rgba(171,199,255,0.05) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,221,221,0.03) 0px, transparent 50%); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="font-body-md mesh-bg min-h-screen flex items-center justify-center px-margin">
+<div class="glass-card rounded-2xl border border-outline-variant/20 p-lg max-w-md w-full text-center">
+  <a href="/" class="flex items-center justify-center gap-sm mb-lg">
+    <span class="material-symbols-outlined text-tertiary text-[24px]">fact_check</span>
+    <span class="font-headline-lg text-[20px] text-on-surface font-bold">VerifyNews</span>
+  </a>
+
+  <div id="loading-view">
+    <div class="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-md" style="animation: spin 1s linear infinite"></div>
+    <p class="text-on-surface-variant">Verifying your email…</p>
+  </div>
+
+  <div id="success-view" class="hidden">
+    <div class="w-16 h-16 rounded-2xl bg-tertiary/20 flex items-center justify-center mx-auto mb-md">
+      <span class="material-symbols-outlined text-tertiary text-[36px]">verified</span>
+    </div>
+    <h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Email verified!</h1>
+    <p class="text-on-surface-variant font-body-md mb-lg">Your account is now fully activated. Thanks for confirming.</p>
+    <a href="/" class="block w-full bg-primary text-on-primary py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all">Continue to app</a>
+  </div>
+
+  <div id="error-view" class="hidden">
+    <div class="w-16 h-16 rounded-2xl bg-error-container/40 flex items-center justify-center mx-auto mb-md">
+      <span class="material-symbols-outlined text-error text-[36px]">link_off</span>
+    </div>
+    <h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Verification failed</h1>
+    <p class="text-on-surface-variant font-body-md mb-lg">This verification link is invalid or has expired.</p>
+    <a href="/" class="block w-full bg-primary text-on-primary py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all">Back to app</a>
+  </div>
+</div>
+
+<script>
+(async function() {
+    const token = new URLSearchParams(location.search).get('token');
+    const show = id => {
+        ['loading-view','success-view','error-view'].forEach(v =>
+            document.getElementById(v).classList.toggle('hidden', v !== id));
+    };
+    if (!token) { show('error-view'); return; }
+    try {
+        const res = await fetch('/api/auth/verify-email?token=' + encodeURIComponent(token));
+        show(res.ok ? 'success-view' : 'error-view');
+    } catch {
+        show('error-view');
+    }
+})();
+</script>
+</body>
+</html>

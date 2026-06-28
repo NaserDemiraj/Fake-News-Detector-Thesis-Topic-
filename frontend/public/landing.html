@@ -128,11 +128,14 @@
 </div>
 <div class="relative">
 <textarea id="analysis-input" class="w-full h-48 bg-surface-container-low border-outline-variant/20 rounded-xl p-md text-body-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Paste article URL or raw text here..."></textarea>
-<input type="file" id="file-attachment" accept=".txt,.csv" class="hidden"/>
+<input type="file" id="file-attachment" accept=".txt" class="hidden"/>
 <div class="absolute bottom-md right-md flex gap-sm z-10">
 <button id="clear-input-btn" onclick="clearInput()" class="hidden bg-surface-container-high p-sm rounded-lg hover:text-error transition-colors cursor-pointer flex items-center" title="Clear input">
 <span class="material-symbols-outlined">close</span>
 </button>
+<a href="/batch.html" class="bg-surface-container-high p-sm rounded-lg hover:text-tertiary transition-colors cursor-pointer flex items-center" title="Bulk / CSV analysis">
+<span class="material-symbols-outlined">table_rows</span>
+</a>
 <label for="file-attachment" class="bg-surface-container-high p-sm rounded-lg hover:text-primary transition-colors cursor-pointer flex items-center" title="Attach text file (.txt)">
 <span class="material-symbols-outlined">attachment</span>
 </label>
@@ -543,7 +546,17 @@
             }
         }
 
-        function logout() {
+        async function logout() {
+            const rt = getRefreshToken();
+            if (rt) {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken: rt })
+                    });
+                } catch {}
+            }
             clearAuth();
             closeAccountModal();
             initAuthUI();
@@ -946,6 +959,7 @@
           class="w-full bg-primary text-on-primary py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all">
           Sign In
         </button>
+        <a href="/forgot-password.html" class="text-center text-primary text-label-sm hover:underline mt-1">Forgot your password?</a>
       </div>
 
       <!-- Register form -->

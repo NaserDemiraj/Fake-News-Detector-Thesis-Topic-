@@ -227,8 +227,7 @@ let pendingDeleteId = null;
 })();
 
 function logoutAndRedirect() {
-    clearAuth();
-    window.location.href = '/';
+    logout('/'); // auth.js — revokes refresh token then redirects
 }
 
 function verdictClass(v) {

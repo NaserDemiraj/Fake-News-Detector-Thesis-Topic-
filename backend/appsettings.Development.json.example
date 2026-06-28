@@ -21,6 +21,15 @@
     "Issuer": "FakeNewsDetector",
     "Audience": "FakeNewsDetector"
   },
+  "AppBaseUrl": "http://localhost:3000",
+  "Smtp": {
+    "_comment": "Leave Host empty in dev — reset/verify links are logged to the console instead of emailed.",
+    "Host": "",
+    "Port": "587",
+    "Username": "",
+    "Password": "",
+    "From": "no-reply@verifynews.app"
+  },
   "AllowedOrigins": "http://localhost:3000",
   "AllowedHosts": "*"
 }
