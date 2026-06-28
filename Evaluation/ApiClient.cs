@@ -67,6 +67,11 @@ public sealed class ApiClient : IDisposable
             var verdict    = result.TryGetProperty("verdict",    out var v) ? v.GetString() ?? "uncertain" : "uncertain";
             var score      = result.TryGetProperty("score",      out var s) && s.ValueKind == JsonValueKind.Number ? s.GetDouble() : 50;
             var confidence = result.TryGetProperty("confidence", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetDouble() : 0.5;
+            var isMock     = result.TryGetProperty("isMock",     out var m) && m.ValueKind == JsonValueKind.True;
+
+            if (isMock)
+                return new PredictionResult("error", 50, 0, sw.ElapsedMilliseconds, true,
+                    "Mock result — all AI providers failed (rate limit / key error)");
 
             return new PredictionResult(verdict, score, confidence, sw.ElapsedMilliseconds, false);
         }

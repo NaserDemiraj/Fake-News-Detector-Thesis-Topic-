@@ -1,0 +1,28 @@
+﻿{
+  "backendLabel": "Groq llama-3.1-8b",
+  "dataset": "ISOT",
+  "samplesPerClass": 50,
+  "timestamp": "2026-06-28T14:11:41.9405848Z",
+  "total": 100,
+  "errors": 23,
+  "uncertain": 0,
+  "tp": 41,
+  "tn": 2,
+  "fp": 34,
+  "fn": 0,
+  "accuracy": 0.5584415584415584,
+  "precision": 0.5466666666666666,
+  "recall": 1,
+  "f1": 0.7068965517241379,
+  "specificity": 0.05555555555555555,
+  "coverage": 1,
+  "meanLatencyMs": 2731.779220779221,
+  "calibration": [
+    {
+      "confidenceLow": 0.8,
+      "confidenceHigh": 0.9,
+      "count": 77,
+      "fractionCorrect": 0.5584415584415584
+    }
+  ]
+}

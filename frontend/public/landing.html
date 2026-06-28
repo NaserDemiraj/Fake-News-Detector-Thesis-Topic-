@@ -173,7 +173,7 @@
                         </button>
 </div>
 <!-- Micro-Interaction SVG decoration -->
-<div class="absolute -right-10 -bottom-10 opacity-5">
+<div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
 <span class="material-symbols-outlined text-[200px]" style="font-variation-settings: 'FILL' 0;">query_stats</span>
 </div>
 </div>
@@ -730,7 +730,6 @@
             document.getElementById('input-error-msg').textContent = msg;
             document.getElementById('input-error').classList.remove('hidden');
             textarea.classList.add('ring-2', 'ring-error');
-            textarea.focus();
         }
 
         function validateInput(content) {
@@ -741,19 +740,17 @@
                 return null;
             }
             const words = content.trim().split(/\s+/).filter(Boolean);
-            if (words.length < 6)  return 'Too short — paste at least a sentence or two (min 6 words).';
+            if (words.length < 3)  return 'Too short — please enter at least 3 words to analyze.';
             if (content.length < 30) return 'Content too short to analyze meaningfully.';
             return null;
         }
 
         // Fix: when user presses browser Back from results page, the bfcache restores
         // landing.html with the loading overlay still visible — hide it immediately.
-        window.addEventListener('pageshow', function(e) {
-            if (e.persisted) {
-                hideLoadingOverlay();
-                runBtn.disabled = false;
-                clearInputError();
-            }
+        window.addEventListener('pageshow', function() {
+            hideLoadingOverlay();
+            runBtn.disabled = false;
+            clearInputError();
         });
 
         function showLoadingOverlay() {
@@ -801,6 +798,10 @@
             ];
 
             try {
+                // Ensure the access token is fresh before the request so the
+                // backend can attach this analysis to the logged-in user.
+                if (isLoggedIn()) await tryRefreshToken();
+
                 const type = content.startsWith('http://') || content.startsWith('https://') ? 'url' : 'text';
                 const response = await fetch('/api/Analysis', {
                     method: 'POST',
@@ -817,6 +818,7 @@
                     sessionStorage.setItem('analysisSaved', JSON.stringify(data.saved !== false));
                     sessionStorage.setItem('analysisType', type);
                     sessionStorage.setItem('analysisUrl', type === 'url' ? content : '');
+                    sessionStorage.setItem('analysisContent', type === 'text' ? content : '');
                     // Flash all steps done then redirect
                     [1,2,3,4].forEach(i => setStep(i, 'done'));
                     document.getElementById('loading-step-text').textContent = 'Complete — loading report...';

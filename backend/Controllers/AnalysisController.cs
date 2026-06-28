@@ -153,7 +153,9 @@ namespace FakeNewsDetector.Controllers
                     return outcome.Fail("Text input exceeds the 10,000 character limit.", 400);
 
                 content = rawContent;
-                title = "Text Analysis";
+                // Use first sentence (up to 80 chars) as title instead of generic label
+                var firstSentence = rawContent.Split(new[] { '.', '!', '?' }, 2)[0].Trim();
+                title = firstSentence.Length > 80 ? firstSentence[..80] + "…" : firstSentence;
             }
 
             if (string.IsNullOrWhiteSpace(content))
@@ -203,9 +205,18 @@ namespace FakeNewsDetector.Controllers
                     ContentHash = contentHash
                 };
 
+                // Save when: (a) not cached at all, OR (b) cached but under a different user —
+                // so the current logged-in user always gets their own record in history.
+                bool needsSave = !fromCache
+                    || (CurrentUserId != null && cached?.UserId != CurrentUserId);
+
                 var saved = true;
-                if (!fromCache)
+                if (needsSave)
                 {
+                    // For cross-user cache hits, generate a fresh ID for this user's record.
+                    if (fromCache && CurrentUserId != null)
+                        savedAnalysis.Id = Guid.NewGuid().ToString();
+
                     try { await _savedAnalysisService.SaveAnalysisAsync(savedAnalysis); }
                     catch (Exception dbEx)
                     {

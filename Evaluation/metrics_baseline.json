@@ -1,0 +1,16 @@
+{
+  "backendLabel": "TF-IDF + LogReg (baseline)",
+  "dataset": "ISOT",
+  "accuracy": 0.9865,
+  "precision": 0.9812,
+  "recall": 0.992,
+  "f1": 0.9866,
+  "specificity": 0.981,
+  "coverage": 1.0,
+  "meanLatencyMs": 0.0,
+  "total": 2000,
+  "uncertain": 0,
+  "errors": 0,
+  "trainSize": 8000,
+  "note": "Classical supervised baseline. Trained on ISOT train split."
+}

@@ -44,26 +44,26 @@ public static class DatasetReader
             HasHeaderRecord = true,
             BadDataFound = null,
             MissingFieldFound = null,
+            PrepareHeaderForMatch = args => args.Header.ToLowerInvariant(),
         };
 
         using var reader = new StreamReader(path, System.Text.Encoding.UTF8);
         using var csv = new CsvReader(reader, config);
 
         return csv.GetRecords<ISOTRecord>()
-            .Where(r => !string.IsNullOrWhiteSpace(r.Text) && r.Text!.Length > 80)
+            .Where(r => !string.IsNullOrWhiteSpace(r.text) && r.text!.Length > 80)
             .Select(r => new DatasetItem(
-                (r.Title ?? "").Trim(),
-                (r.Text ?? "").Trim(),
+                (r.title ?? "").Trim(),
+                (r.text ?? "").Trim(),
                 label))
             .ToList();
     }
 
-    // CsvHelper maps by header name (case-insensitive)
     private sealed class ISOTRecord
     {
-        public string? Title { get; set; }
-        public string? Text { get; set; }
-        public string? Subject { get; set; }
-        public string? Date { get; set; }
+        public string? title { get; set; }
+        public string? text { get; set; }
+        public string? subject { get; set; }
+        public string? date { get; set; }
     }
 }

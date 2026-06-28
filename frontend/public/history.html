@@ -129,17 +129,39 @@
   </div>
 
   <!-- Analytics Charts — hidden until data loads -->
-  <div id="analytics-section" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-lg mb-lg">
-    <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
-      <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Verdict Distribution</h3>
-      <div class="flex items-center justify-center" style="height:220px">
-        <canvas id="verdict-chart"></canvas>
+  <div id="analytics-section" class="hidden space-y-lg mb-lg">
+    <!-- Row 1: Verdict + Trend -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+      <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Verdict Distribution</h3>
+        <div class="flex items-center justify-center" style="height:220px">
+          <canvas id="verdict-chart"></canvas>
+        </div>
+      </div>
+      <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Credibility Score Trend (last 20)</h3>
+        <div style="height:220px">
+          <canvas id="trend-chart"></canvas>
+        </div>
       </div>
     </div>
-    <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
-      <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md">Credibility Score Trend (last 20)</h3>
-      <div style="height:220px">
-        <canvas id="trend-chart"></canvas>
+    <!-- Row 2: Top Red Flags + Language Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+      <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md flex items-center gap-xs">
+          <span class="material-symbols-outlined text-error text-[14px]">warning</span> Top Red Flags
+        </h3>
+        <div id="top-flags-list" class="flex flex-col gap-xs">
+          <span class="text-outline text-sm">No data yet</span>
+        </div>
+      </div>
+      <div class="glass-card border border-outline-variant/20 rounded-2xl p-lg">
+        <h3 class="text-[11px] uppercase text-outline tracking-widest font-bold mb-md flex items-center gap-xs">
+          <span class="material-symbols-outlined text-secondary text-[14px]">translate</span> Language Distribution
+        </h3>
+        <div id="language-list" class="flex flex-col gap-xs">
+          <span class="text-outline text-sm">No data yet</span>
+        </div>
       </div>
     </div>
   </div>
@@ -328,7 +350,96 @@ function updateStats(records) {
   document.getElementById('stat-true').textContent = trueCount;
   document.getElementById('stat-fake').textContent = fakeCount;
   document.getElementById('stat-uncertain').textContent = uncertainCount;
-  if (total > 0) updateCharts(records, trueCount, fakeCount, uncertainCount);
+  if (total > 0) {
+    updateCharts(records, trueCount, fakeCount, uncertainCount);
+    updateTopFlags(records);
+    updateLanguageList(records);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateTopFlags(records) {
+  const flagCounts = {};
+  records.forEach(r => {
+    if (!r.resultJson) return;
+    try {
+      const parsed = JSON.parse(r.resultJson);
+      (parsed.redFlags || []).forEach(f => {
+        // Strip leading emoji/symbol characters for grouping key
+        const key = f.replace(/^[⚠⛔❗‼️\s⚠✗✘]+/u, '').trim().toLowerCase();
+        if (key.length < 5) return;
+        flagCounts[key] = (flagCounts[key] || { label: f, count: 0 });
+        flagCounts[key].count++;
+      });
+    } catch {}
+  });
+
+  const sorted = Object.values(flagCounts).sort((a, b) => b.count - a.count).slice(0, 7);
+  const container = document.getElementById('top-flags-list');
+  if (!container) return;
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<span class="text-outline text-sm">No red flags in stored analyses</span>';
+    return;
+  }
+
+  const max = sorted[0].count;
+  container.innerHTML = sorted.map(({ label, count }) => {
+    const pct = Math.round((count / max) * 100);
+    const shortLabel = label.replace(/^[^\w]+/, '').trim();
+    const display = escHtml(shortLabel.length > 55 ? shortLabel.slice(0, 55) + '…' : shortLabel);
+    return `<div class="flex flex-col gap-0.5">
+      <div class="flex justify-between items-center">
+        <span class="text-[12px] text-on-surface-variant leading-snug flex-1 mr-sm">${display}</span>
+        <span class="text-[11px] font-mono text-error flex-shrink-0">${count}×</span>
+      </div>
+      <div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+        <div class="h-full bg-error/60 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateLanguageList(records) {
+  const langCounts = {};
+  records.forEach(r => {
+    if (!r.resultJson) return;
+    try {
+      const parsed = JSON.parse(r.resultJson);
+      const code = (parsed.language || 'en').toLowerCase();
+      const name = parsed.languageName || code.toUpperCase();
+      if (!langCounts[code]) langCounts[code] = { name, count: 0 };
+      langCounts[code].count++;
+    } catch {}
+  });
+
+  const sorted = Object.values(langCounts).sort((a, b) => b.count - a.count);
+  const container = document.getElementById('language-list');
+  if (!container) return;
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<span class="text-outline text-sm">No language data in stored analyses</span>';
+    return;
+  }
+
+  const total = sorted.reduce((s, l) => s + l.count, 0);
+  const colors = ['secondary', 'primary', 'tertiary', 'error', 'secondary', 'primary'];
+  container.innerHTML = sorted.map(({ name, count }, i) => {
+    const pct = Math.round((count / total) * 100);
+    const color = colors[i % colors.length];
+    return `<div class="flex flex-col gap-0.5">
+      <div class="flex justify-between items-center">
+        <span class="text-[12px] text-on-surface-variant">${escHtml(name)}</span>
+        <span class="text-[11px] font-mono text-${color}">${pct}% (${count})</span>
+      </div>
+      <div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+        <div class="h-full bg-${color}/60 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 let _verdictChart = null, _trendChart = null;
@@ -426,6 +537,11 @@ function viewReport(id) {
       const result = JSON.parse(record.resultJson);
       sessionStorage.setItem('analysisResult', JSON.stringify(result));
       sessionStorage.setItem('analysisId', record.id);
+      sessionStorage.setItem('analysisType', record.contentType || 'text');
+      sessionStorage.setItem('analysisUrl', record.url || '');
+      // Provide stored content so the heatmap works (may be truncated to 500 chars)
+      sessionStorage.setItem('analysisContent', record.contentType !== 'url' ? (record.content || '') : '');
+      sessionStorage.setItem('analysisSaved', 'true');
       window.location.href = '/results.html';
       return;
     } catch {}

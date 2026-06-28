@@ -136,7 +136,8 @@ public static class EvaluationRunner
         Console.Write($"  [{row.Index,3}/{total}] {icon} ");
         Console.ResetColor();
 
-        var pred = row.IsError ? $"ERROR: {(row.ErrorMessage ?? "")[-Math.Min(row.ErrorMessage?.Length ?? 0, 50)..]}"
+        var errMsg = row.ErrorMessage ?? "";
+        var pred = row.IsError ? $"ERROR: {(errMsg.Length > 50 ? errMsg[^50..] : errMsg)}"
                                : $"{row.PredictedVerdict,-12} (score={row.Score:F0}, conf={row.Confidence:F2}) {row.LatencyMs}ms";
 
         Console.WriteLine($"true={row.TrueLabel,-4}  {pred}");

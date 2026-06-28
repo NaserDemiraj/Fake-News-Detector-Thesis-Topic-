@@ -418,6 +418,16 @@
       <div class="text-outline text-sm">Loading...</div>
     </div>
   </div>
+
+  <!-- Inline Text Heatmap — only shown for text analyses with highlighted sentences -->
+  <div id="heatmap-section" class="hidden glass-card p-md rounded-xl mt-md">
+    <h3 class="font-label-md text-label-md text-error uppercase mb-xs flex items-center gap-xs">
+      <span class="material-symbols-outlined text-sm">highlight</span> Text Heatmap
+      <span class="ml-auto text-[9px] bg-error/10 text-error px-1.5 py-0.5 rounded border border-error/20 tracking-wider normal-case font-normal">Highlighted Sentences</span>
+    </h3>
+    <p class="text-[11px] text-outline mb-md">Sentences that triggered red flags are highlighted directly in the original text.</p>
+    <div id="heatmap-content" class="text-sm text-on-surface-variant leading-relaxed font-mono whitespace-pre-wrap break-words bg-surface-container/50 rounded-lg p-md max-h-96 overflow-y-auto"></div>
+  </div>
 </section>
 
 <!-- Network Section -->
@@ -660,6 +670,33 @@
                     </li>`;
                 }).join('')
                 : '<li class="text-outline text-sm py-xs">No red flags detected</li>';
+        }
+
+        // Inline Text Heatmap — highlight flagged sentences in the original text
+        const originalText = sessionStorage.getItem('analysisContent') || '';
+        const heatmapSection = document.getElementById('heatmap-section');
+        const heatmapContent = document.getElementById('heatmap-content');
+        const highlights = result.highlightedSentences || [];
+        if (originalText && highlights.length > 0 && heatmapSection && heatmapContent) {
+            heatmapSection.classList.remove('hidden');
+            let html = originalText;
+            // Escape HTML entities first
+            html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Highlight each flagged sentence
+            highlights.forEach((h, idx) => {
+                if (!h.sentence || h.sentence.length < 8) return;
+                const escaped = h.sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                    .replace(/&amp;/g, '&amp;amp;').replace(/&lt;/g, '&amp;lt;').replace(/&gt;/g, '&amp;gt;');
+                const colors = ['rgba(255,100,80,0.25)', 'rgba(255,180,0,0.2)', 'rgba(200,80,255,0.2)'];
+                const border = ['#ff6450', '#ffb400', '#c850ff'];
+                const c = idx % 3;
+                const tooltip = h.reason ? ` title="${h.reason.replace(/"/g, '&quot;')}"` : '';
+                html = html.replace(
+                    new RegExp(escaped, 'i'),
+                    `<mark style="background:${colors[c]};border-bottom:2px solid ${border[c]};border-radius:2px;padding:0 2px;cursor:help"${tooltip}>$&</mark>`
+                );
+            });
+            heatmapContent.innerHTML = html;
         }
 
         // Deep Scan — Credibility Signals
