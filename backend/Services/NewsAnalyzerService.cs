@@ -65,7 +65,7 @@ namespace FakeNewsDetector.Services
             try
             {
                 var json = await CallAIWithRetryAsync(content);
-                var result = ParseGroqResponse(json, content);
+                var result = AnalysisResultParser.Parse(json);
                 _logger.LogInformation("Analysis complete. Verdict: {Verdict}, Score: {Score}", result.Verdict, result.Score);
                 return result;
             }
@@ -143,136 +143,7 @@ JSON:
                 .GetString() ?? "{}";
         }
 
-        // Strip markdown fences that LLMs sometimes add despite instructions
-        private static string ExtractJson(string raw)
-        {
-            var text = raw.Trim();
-
-            if (text.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                text = text.Substring(7);
-            else if (text.StartsWith("```"))
-                text = text.Substring(3);
-
-            if (text.EndsWith("```"))
-                text = text.Substring(0, text.Length - 3);
-
-            text = text.Trim();
-
-            var start = text.IndexOf('{');
-            var end = text.LastIndexOf('}');
-            if (start >= 0 && end > start)
-                return text.Substring(start, end - start + 1);
-
-            return text;
-        }
-
-        private AnalysisResult ParseGroqResponse(string rawResponse, string originalContent)
-        {
-            try
-            {
-                var json = ExtractJson(rawResponse);
-                _logger.LogDebug("Parsing response: {Json}", json.Substring(0, Math.Min(200, json.Length)));
-
-                var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                var result = new AnalysisResult { Success = true };
-
-                if (root.TryGetProperty("verdict", out var v)) result.Verdict = v.GetString() ?? "uncertain";
-                if (root.TryGetProperty("score", out var s) && s.ValueKind == JsonValueKind.Number) result.Score = s.GetDouble();
-                if (root.TryGetProperty("confidence", out var c) && c.ValueKind == JsonValueKind.Number) result.Confidence = c.GetDouble();
-                if (root.TryGetProperty("summary", out var sum)) result.Summary = sum.GetString() ?? "";
-                if (root.TryGetProperty("explanation", out var exp)) result.Explanation = exp.GetString() ?? "";
-                if (root.TryGetProperty("reasoning", out var r)) result.Reasoning = r.GetString();
-
-                result.CredibilitySignals = ExtractStringList(root, "credibility_signals");
-                result.RedFlags = ExtractStringList(root, "red_flags");
-
-                if (root.TryGetProperty("bias_detection", out var bias))
-                {
-                    var bd = new BiasDetection();
-                    if (bias.TryGetProperty("emotional_language_score", out var el) && el.ValueKind == JsonValueKind.Number)
-                        bd.EmotionalLanguageScore = (int)el.GetDouble();
-                    if (bias.TryGetProperty("fear_mongering", out var fm)) bd.FearMongering = fm.GetBoolean();
-                    if (bias.TryGetProperty("political_bias", out var pb)) bd.PoliticalBias = pb.GetString() ?? "neutral";
-                    if (bias.TryGetProperty("clarity", out var cl)) bd.Clarity = cl.GetString() ?? "Clear";
-                    bd.ManipulationTactics = ExtractStringList(bias, "manipulation_tactics");
-                    result.BiasDetection = bd;
-                }
-
-                if (root.TryGetProperty("factors", out var factors))
-                {
-                    result.Factors = factors.EnumerateArray().Select(f => new AnalysisFactor
-                    {
-                        Name = f.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
-                        Score = f.TryGetProperty("score", out var sc) && sc.ValueKind == JsonValueKind.Number ? sc.GetDouble() : 50,
-                        Details = f.TryGetProperty("details", out var d) ? d.GetString() : null
-                    }).ToList();
-                }
-
-                if (root.TryGetProperty("evidence_points", out var ep))
-                {
-                    result.EvidencePoints = ep.EnumerateArray().Select(e => new EvidencePoint
-                    {
-                        Text = e.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "",
-                        Status = e.TryGetProperty("status", out var st) ? st.GetString() ?? "unverified" : "unverified"
-                    }).ToList();
-                }
-
-                if (root.TryGetProperty("claims", out var claims))
-                {
-                    result.Claims = claims.EnumerateArray().Select(cl => new Claim
-                    {
-                        Text = cl.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "",
-                        Status = cl.TryGetProperty("status", out var st) ? st.GetString() ?? "unverified" : "unverified",
-                        Sources = cl.TryGetProperty("sources", out var src)
-                            ? src.EnumerateArray()
-                                .Select(s => s.ValueKind == JsonValueKind.String ? s.GetString() : null)
-                                .Where(s => !string.IsNullOrEmpty(s))
-                                .ToList()!
-                            : new List<string>()
-                    }).ToList();
-                }
-
-                if (root.TryGetProperty("risk_categories", out var risks))
-                {
-                    result.RiskCategories = risks.EnumerateArray().Select(rk => new RiskCategory
-                    {
-                        Name = rk.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
-                        Score = rk.TryGetProperty("score", out var sc) && sc.ValueKind == JsonValueKind.Number ? sc.GetDouble() : 50,
-                        Label = rk.TryGetProperty("label", out var lb) ? lb.GetString() ?? "Medium" : "Medium"
-                    }).ToList();
-                }
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing Groq response");
-                return new AnalysisResult
-                {
-                    Success = false,
-                    Score = 50,
-                    Verdict = "uncertain",
-                    Summary = "Could not parse AI response",
-                    Explanation = "The AI response could not be parsed. Please try again.",
-                    Confidence = 0.0,
-                    Factors = new List<AnalysisFactor> { new() { Name = "Parse Error", Score = 50 } },
-                    BiasDetection = new BiasDetection()
-                };
-            }
-        }
-
-        private static List<string> ExtractStringList(JsonElement element, string propertyName)
-        {
-            if (!element.TryGetProperty(propertyName, out var arr)) return new List<string>();
-            return arr.EnumerateArray()
-                .Select(item => item.ValueKind == JsonValueKind.String
-                    ? item.GetString()
-                    : item.TryGetProperty("text", out var t) ? t.GetString() : null)
-                .Where(s => !string.IsNullOrEmpty(s))
-                .ToList()!;
-        }
+        // Parsing logic lives in AnalysisResultParser so it can be unit-tested independently.
 
         private static AnalysisResult MockAnalysis() => new()
         {
