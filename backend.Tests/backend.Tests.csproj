@@ -2,30 +2,28 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
     <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk"       Version="17.9.0" />
-    <PackageReference Include="xunit"                        Version="2.9.0"  />
-    <PackageReference Include="xunit.runner.visualstudio"    Version="2.8.2"  />
-    <PackageReference Include="coverlet.collector"           Version="6.0.2"  />
-    <PackageReference Include="HtmlAgilityPack"              Version="1.11.54" />
-  </ItemGroup>
-
-  <!-- Reference backend services/models without referencing the ASP.NET host -->
-  <ItemGroup>
-    <Compile Include="..\backend\Models\AnalysisResult.cs"         Link="Backend\AnalysisResult.cs"       />
-    <Compile Include="..\backend\Services\AnalysisResultParser.cs" Link="Backend\AnalysisResultParser.cs" />
-    <Compile Include="..\backend\Services\HtmlExtractor.cs"        Link="Backend\HtmlExtractor.cs"        />
-    <!-- Metrics class from the Evaluation project (no ASP.NET deps) -->
-    <Compile Include="..\Evaluation\Metrics.cs"                    Link="Evaluation\Metrics.cs"           />
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.1" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\backend\FakeNewsDetector.csproj" />
+    <ProjectReference Include="..\Evaluation\Evaluation.csproj" />
   </ItemGroup>
 
 </Project>

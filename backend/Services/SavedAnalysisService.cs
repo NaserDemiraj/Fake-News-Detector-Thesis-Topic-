@@ -114,13 +114,19 @@ namespace FakeNewsDetector.Services
         public async Task<DomainStats> GetDomainStatsAsync(string host)
         {
             var rows = await _neon.QueryAsync(
-                @"SELECT ""Score"",""Verdict"" FROM ""SavedAnalyses""
-                  WHERE ""Url"" LIKE $1 AND ""Url"" IS NOT NULL",
+                @"SELECT ""Score"",""Verdict"",""Date"" FROM ""SavedAnalyses""
+                  WHERE ""Url"" LIKE $1 AND ""Url"" IS NOT NULL
+                  ORDER BY ""Date"" DESC",
                 "%" + host + "%");
 
             var analyses = rows
                 .OfType<JsonObject>()
-                .Select(o => new { Score = DblOrZero(o, "Score"), Verdict = Str(o, "Verdict") })
+                .Select(o => new
+                {
+                    Score = DblOrZero(o, "Score"),
+                    Verdict = Str(o, "Verdict"),
+                    Date = DateOrDefault(o, "Date")
+                })
                 .ToList();
 
             if (analyses.Count == 0)
@@ -133,6 +139,27 @@ namespace FakeNewsDetector.Services
                            : fakeCount >= trueCount && fakeCount >= uncertainCount ? "likely_fake"
                            : "uncertain";
 
+            // Credibility label: driven by fake ratio among decisive verdicts
+            var decisive = trueCount + fakeCount;
+            var fakeRatio = decisive > 0 ? (double)fakeCount / decisive : 0.5;
+            var label = decisive == 0 ? "Unknown"
+                      : fakeRatio >= 0.6 ? "Flagged"
+                      : fakeRatio <= 0.25 ? "Reliable"
+                      : "Mixed Record";
+
+            // Confidence saturates at ~30 samples (Wilson-style approximation)
+            var confidence = Math.Round(1.0 - Math.Exp(-analyses.Count / 15.0), 3);
+
+            // Recent trend: compare avg score of newest 5 vs oldest 5 in dataset
+            var recentAvg = analyses.Take(5).Average(a => a.Score);
+            var olderAvg = analyses.Count >= 10
+                ? analyses.Skip(analyses.Count - 5).Average(a => a.Score)
+                : analyses.Average(a => a.Score);
+            var trend = analyses.Count < 5 ? "stable"
+                      : recentAvg - olderAvg > 5 ? "improving"
+                      : olderAvg - recentAvg > 5 ? "declining"
+                      : "stable";
+
             return new DomainStats
             {
                 Host = host,
@@ -141,7 +168,11 @@ namespace FakeNewsDetector.Services
                 LikelyTrueCount = trueCount,
                 LikelyFakeCount = fakeCount,
                 UncertainCount = uncertainCount,
-                MostCommonVerdict = mostCommon
+                MostCommonVerdict = mostCommon,
+                CredibilityLabel = label,
+                CredibilityConfidence = confidence,
+                RecentTrend = trend,
+                RecentAverageScore = Math.Round(recentAvg, 1)
             };
         }
 

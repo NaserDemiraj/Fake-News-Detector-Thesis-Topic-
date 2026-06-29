@@ -95,6 +95,7 @@ builder.Services.AddCors(options =>
 // Application services
 builder.Services.AddSingleton<NeonHttpService>();
 builder.Services.AddSingleton<TavilyService>();
+builder.Services.AddSingleton<FactCheckService>();
 builder.Services.AddSingleton<INewsAnalyzerService, NewsAnalyzerService>();
 builder.Services.AddScoped<ISavedAnalysisService, SavedAnalysisService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

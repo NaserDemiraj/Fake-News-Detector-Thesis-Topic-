@@ -12,15 +12,17 @@ namespace FakeNewsDetector.Services
         private readonly ILogger<NewsAnalyzerService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly TavilyService _tavily;
+        private readonly FactCheckService _factCheck;
         private readonly List<AiProvider> _providers;
         // Ablation control: zero_shot | skepticism | few_shot | full (default)
         private readonly string _promptVariant;
 
-        public NewsAnalyzerService(ILogger<NewsAnalyzerService> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration, TavilyService tavily)
+        public NewsAnalyzerService(ILogger<NewsAnalyzerService> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration, TavilyService tavily, FactCheckService factCheck)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _tavily = tavily;
+            _factCheck = factCheck;
             _providers = new List<AiProvider>();
             _promptVariant = configuration["PromptVariant"] ?? "full";
             _logger.LogInformation("Prompt variant: {Variant}", _promptVariant);
@@ -92,10 +94,13 @@ namespace FakeNewsDetector.Services
                 return MockAnalysis();
             }
 
-            // Start Tavily web-search in parallel with the LLM call to add real evidence
+            // Start Tavily + Google Fact Check in parallel with the LLM call
             var searchQuery = ExtractSearchQuery(content);
             var tavilyTask = _tavily.IsEnabled
                 ? _tavily.SearchAsync(searchQuery)
+                : Task.FromResult(new List<EvidencePoint>());
+            var factCheckTask = _factCheck.IsEnabled
+                ? _factCheck.SearchAsync(searchQuery)
                 : Task.FromResult(new List<EvidencePoint>());
 
             foreach (var provider in _providers)
@@ -107,10 +112,13 @@ namespace FakeNewsDetector.Services
                     var result = AnalysisResultParser.Parse(json);
                     _logger.LogInformation("Analysis complete via {Provider}. Verdict: {Verdict}, Score: {Score}", provider.Name, result.Verdict, result.Score);
 
-                    // Merge Tavily evidence into the result
+                    // Merge Tavily + Fact Check evidence into the result
+                    // Fact-check results go first (they're the strongest signal)
+                    var factCheckEvidence = await factCheckTask;
                     var webEvidence = await tavilyTask;
-                    if (webEvidence.Count > 0)
-                        result.EvidencePoints = webEvidence.Concat(result.EvidencePoints).ToList();
+                    var allEvidence = factCheckEvidence.Concat(webEvidence).ToList();
+                    if (allEvidence.Count > 0)
+                        result.EvidencePoints = allEvidence.Concat(result.EvidencePoints).ToList();
 
                     return result;
                 }

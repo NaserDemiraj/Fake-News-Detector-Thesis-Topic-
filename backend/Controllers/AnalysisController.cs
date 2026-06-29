@@ -42,7 +42,31 @@ namespace FakeNewsDetector.Controllers
             if (!outcome.Ok)
                 return Problem(title: "Analysis error", detail: outcome.Error, statusCode: outcome.StatusCode);
 
-            return Ok(new { result = outcome.Result, analysisId = outcome.AnalysisId, saved = outcome.Saved, savedForUser = outcome.SavedForUser, cached = outcome.Cached });
+            // For URL analyses, attach domain reputation (fire-and-forget lookup; null if no history)
+            object? domainReputation = null;
+            if (request.Type == "url" && !string.IsNullOrEmpty(outcome.SourceUrl) &&
+                Uri.TryCreate(outcome.SourceUrl, UriKind.Absolute, out var uri))
+            {
+                try
+                {
+                    var stats = await _savedAnalysisService.GetDomainStatsAsync(uri.Host.ToLowerInvariant());
+                    if (stats.TotalAnalyses > 0)
+                        domainReputation = new
+                        {
+                            host = stats.Host,
+                            totalAnalyses = stats.TotalAnalyses,
+                            averageScore = stats.AverageScore,
+                            credibilityLabel = stats.CredibilityLabel,
+                            credibilityConfidence = stats.CredibilityConfidence,
+                            recentTrend = stats.RecentTrend,
+                            likelyTrueCount = stats.LikelyTrueCount,
+                            likelyFakeCount = stats.LikelyFakeCount
+                        };
+                }
+                catch { /* domain stats are non-critical */ }
+            }
+
+            return Ok(new { result = outcome.Result, analysisId = outcome.AnalysisId, saved = outcome.Saved, savedForUser = outcome.SavedForUser, cached = outcome.Cached, domainReputation });
         }
 
         // POST /api/Analysis/batch — analyze many items at once (CSV rows / bulk)
@@ -177,11 +201,30 @@ namespace FakeNewsDetector.Controllers
 
                 if (cached?.ResultJson != null)
                 {
-                    result = JsonSerializer.Deserialize<AnalysisResult>(cached.ResultJson,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? await _analyzerService.AnalyzeContentAsync(content);
-                    analysisId = cached.Id;
-                    fromCache = true;
-                    _logger.LogInformation("Cache hit for content hash {Hash}", contentHash[..8]);
+                    AnalysisResult? deserialized = null;
+                    try
+                    {
+                        deserialized = JsonSerializer.Deserialize<AnalysisResult>(cached.ResultJson,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Cached ResultJson is malformed for hash {Hash} — re-analyzing", contentHash[..8]);
+                    }
+
+                    // Treat a deserialized result as valid only if it has a non-empty verdict
+                    if (deserialized != null && !string.IsNullOrEmpty(deserialized.Verdict))
+                    {
+                        result = deserialized;
+                        analysisId = cached.Id;
+                        fromCache = true;
+                        _logger.LogInformation("Cache hit for content hash {Hash}", contentHash[..8]);
+                    }
+                    else
+                    {
+                        result = await _analyzerService.AnalyzeContentAsync(content);
+                        analysisId = Guid.NewGuid().ToString();
+                    }
                 }
                 else
                 {
