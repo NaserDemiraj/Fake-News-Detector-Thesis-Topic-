@@ -4,6 +4,7 @@ namespace FakeNewsDetector.Models
     {
         public bool Success { get; set; }
         public bool IsMock { get; set; } = false;
+        public bool IsRejected { get; set; } = false; // true when content failed pre-filter (too short / gibberish)
         public double Score { get; set; }
         public double Confidence { get; set; } = 0.8;
         public string Verdict { get; set; } = string.Empty; // "likely_true", "likely_fake", "uncertain"
@@ -50,6 +51,7 @@ namespace FakeNewsDetector.Models
     {
         public string Text { get; set; } = string.Empty;
         public string Status { get; set; } = "unverified"; // "verified", "warning", "unverified"
+        public string? Source { get; set; } // URL of the web source (Tavily)
     }
 
     public class Claim

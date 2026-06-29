@@ -542,6 +542,7 @@ function viewReport(id) {
       // Provide stored content so the heatmap works (may be truncated to 500 chars)
       sessionStorage.setItem('analysisContent', record.contentType !== 'url' ? (record.content || '') : '');
       sessionStorage.setItem('analysisSaved', 'true');
+      sessionStorage.setItem('analysisSavedForUser', 'true');
       window.location.href = '/results.html';
       return;
     } catch {}

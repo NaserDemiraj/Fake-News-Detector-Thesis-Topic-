@@ -42,7 +42,7 @@ namespace FakeNewsDetector.Controllers
             if (!outcome.Ok)
                 return Problem(title: "Analysis error", detail: outcome.Error, statusCode: outcome.StatusCode);
 
-            return Ok(new { result = outcome.Result, analysisId = outcome.AnalysisId, saved = outcome.Saved, cached = outcome.Cached });
+            return Ok(new { result = outcome.Result, analysisId = outcome.AnalysisId, saved = outcome.Saved, savedForUser = outcome.SavedForUser, cached = outcome.Cached });
         }
 
         // POST /api/Analysis/batch — analyze many items at once (CSV rows / bulk)
@@ -164,9 +164,12 @@ namespace FakeNewsDetector.Controllers
             try
             {
                 // Content-hash dedup: if we've seen this exact content before, return cached result
+                // X-Bypass-Cache: 1 skips the lookup (used by the evaluation harness so each prompt variant gets a fresh LLM call)
+                var bypassCache = Request.Headers.TryGetValue("X-Bypass-Cache", out var bypassVal) && bypassVal == "1";
                 var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
                 SavedAnalysis? cached = null;
-                try { cached = await _savedAnalysisService.GetByContentHashAsync(contentHash); } catch { }
+                if (!bypassCache)
+                    try { cached = await _savedAnalysisService.GetByContentHashAsync(contentHash); } catch { }
 
                 AnalysisResult result;
                 string analysisId;
@@ -213,9 +216,13 @@ namespace FakeNewsDetector.Controllers
                 var saved = true;
                 if (needsSave)
                 {
-                    // For cross-user cache hits, generate a fresh ID for this user's record.
+                    // For cross-user cache hits, generate a fresh ID for this user's record
+                    // and update analysisId so the frontend gets the correct record ID.
                     if (fromCache && CurrentUserId != null)
+                    {
                         savedAnalysis.Id = Guid.NewGuid().ToString();
+                        analysisId = savedAnalysis.Id;
+                    }
 
                     try { await _savedAnalysisService.SaveAnalysisAsync(savedAnalysis); }
                     catch (Exception dbEx)
@@ -225,10 +232,15 @@ namespace FakeNewsDetector.Controllers
                     }
                 }
 
+                // Tell the frontend whether the record was saved under the user's account.
+                // If savedForUser=false the record exists but won't appear in their history.
+                var savedForUser = needsSave && saved && CurrentUserId != null;
+
                 outcome.Ok = true;
                 outcome.Result = result;
                 outcome.AnalysisId = analysisId;
                 outcome.Saved = saved;
+                outcome.SavedForUser = savedForUser;
                 outcome.Cached = fromCache;
                 outcome.Title = title;
                 outcome.SourceUrl = sourceUrl;
@@ -465,6 +477,7 @@ namespace FakeNewsDetector.Controllers
         public AnalysisResult? Result;
         public string AnalysisId = "";
         public bool Saved = true;
+        public bool SavedForUser = false;
         public bool Cached;
         public string Title = "";
         public string SourceUrl = "";

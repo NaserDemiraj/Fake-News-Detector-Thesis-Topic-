@@ -22,6 +22,7 @@ public sealed class ApiClient : IDisposable
         _baseUrl = baseUrl.TrimEnd('/');
         _http = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("VerifyNews-Evaluator/1.0");
+        _http.DefaultRequestHeaders.Add("X-Bypass-Cache", "1");
     }
 
     /// <summary>Checks that the backend is reachable before starting a long run.</summary>

@@ -153,6 +153,14 @@
     <p class="text-orange-400/80 text-xs mt-0.5">Could not save to the database. Favorites and notes won't work for this analysis — the backend may not be connected to the database.</p>
   </div>
 </div>
+<!-- Session expired notice — saved anonymously, won't appear in user history -->
+<div id="session-expired-banner" class="hidden mb-lg flex items-start gap-sm bg-yellow-900/30 border border-yellow-500/40 rounded-xl px-md py-sm">
+  <span class="material-symbols-outlined text-yellow-400 text-xl flex-shrink-0 mt-0.5">person_off</span>
+  <div>
+    <p class="text-yellow-300 font-label-md font-semibold text-sm">Session expired — not saved to your account</p>
+    <p class="text-yellow-400/80 text-xs mt-0.5">Your session timed out before this analysis ran. The result won't appear in your history. Sign out and back in, then analyse again to save it.</p>
+  </div>
+</div>
 <!-- Mock analysis warning banner — shown only when no AI key is configured -->
 <div id="mock-banner" class="hidden mb-lg flex items-start gap-sm bg-amber-900/30 border border-amber-500/40 rounded-xl px-md py-sm">
   <span class="material-symbols-outlined text-amber-400 text-xl flex-shrink-0 mt-0.5">warning</span>
@@ -511,6 +519,12 @@
             if (unsaved) unsaved.classList.remove('hidden');
         }
 
+        // Show session-expired banner if logged in but analysis wasn't saved to account
+        if (isLoggedIn() && sessionStorage.getItem('analysisSavedForUser') === 'false') {
+            const expiredBanner = document.getElementById('session-expired-banner');
+            if (expiredBanner) expiredBanner.classList.remove('hidden');
+        }
+
         // Load domain reputation if this was a URL analysis
         const analysisType = sessionStorage.getItem('analysisType');
         const analysisUrl = sessionStorage.getItem('analysisUrl');
@@ -594,6 +608,10 @@
             });
         }, observerOptions);
 
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
         function observeAnimated() {
             document.querySelectorAll('.scroll-reveal, .slide-3d').forEach(el => observer.observe(el));
         }
@@ -621,13 +639,17 @@
                     const s = statusMap[item.status] || statusMap.unverified;
                     const color = logColors[i % logColors.length];
                     const logId = 'LOG_' + String(1000 + i * 3).padStart(4, '0');
+                    const sourceLink = item.source
+                        ? `<a href="${escHtml(item.source)}" target="_blank" rel="noopener noreferrer" class="mt-sm flex items-center gap-xs text-xs text-primary hover:underline break-all"><span class="material-symbols-outlined text-sm">open_in_new</span>${escHtml(item.source)}</a>`
+                        : '';
                     return `<div class="glass-card slide-3d p-md rounded-xl" style="transition-delay:${i * 100}ms">
                         <div class="flex justify-between items-center mb-sm">
                             <span class="text-label-sm font-mono text-${color}">${logId}</span>
                             <span class="${s.badge} px-2 py-0.5 rounded text-[10px] uppercase font-bold">${s.text}</span>
                         </div>
                         <h4 class="font-bold text-on-surface mb-xs">Evidence Point ${i + 1}</h4>
-                        <p class="text-sm text-on-surface-variant leading-relaxed">${item.text}</p>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">${escHtml(item.text)}</p>
+                        ${sourceLink}
                     </div>`;
                 }).join('');
                 observeAnimated();

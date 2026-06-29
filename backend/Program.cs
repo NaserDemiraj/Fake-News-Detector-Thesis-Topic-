@@ -35,6 +35,8 @@ if (jwtKey.StartsWith("CHANGE-THIS", StringComparison.OrdinalIgnoreCase) || jwtK
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Prevent JsonWebTokenHandler from remapping "sub" → ClaimTypes.NameIdentifier
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -92,6 +94,7 @@ builder.Services.AddCors(options =>
 
 // Application services
 builder.Services.AddSingleton<NeonHttpService>();
+builder.Services.AddSingleton<TavilyService>();
 builder.Services.AddSingleton<INewsAnalyzerService, NewsAnalyzerService>();
 builder.Services.AddScoped<ISavedAnalysisService, SavedAnalysisService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -159,6 +162,14 @@ static async Task RunMigrationsAsync(WebApplication app)
         await neon.ExecuteAsync(@"
             ALTER TABLE ""Users""
             ADD COLUMN IF NOT EXISTS ""EmailVerified"" BOOLEAN NOT NULL DEFAULT FALSE");
+
+        // Ensure email uniqueness even if table was created before the constraint existed
+        await neon.ExecuteAsync(@"
+            CREATE UNIQUE INDEX IF NOT EXISTS ""idx_users_email"" ON ""Users"" (""Email"")");
+
+        // Allow Url to be NULL (text analyses have no URL) — idempotent on repeated runs
+        await neon.ExecuteAsync(@"
+            ALTER TABLE ""SavedAnalyses"" ALTER COLUMN ""Url"" DROP NOT NULL");
 
         // Refresh tokens (revocable, rotated)
         await neon.ExecuteAsync(@"

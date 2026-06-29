@@ -732,16 +732,26 @@
             textarea.classList.add('ring-2', 'ring-error');
         }
 
+        // Normalise input: if it looks like a bare domain/URL, prepend https://
+        function normaliseInput(content) {
+            const t = content.trim();
+            if (t.startsWith('http://') || t.startsWith('https://')) return t;
+            // Bare domain: no spaces, contains a dot, looks like a hostname
+            if (!t.includes(' ') && /^[a-zA-Z0-9][a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+\.[a-zA-Z]{2,}/.test(t))
+                return 'https://' + t;
+            return t;
+        }
+
         function validateInput(content) {
             if (!content) return 'Please paste some text or a URL to analyze.';
             const isUrl = content.startsWith('http://') || content.startsWith('https://');
             if (isUrl) {
-                try { new URL(content); } catch { return 'Invalid URL. Must start with http:// or https://'; }
+                try { new URL(content); } catch { return 'Invalid URL format.'; }
                 return null;
             }
             const words = content.trim().split(/\s+/).filter(Boolean);
-            if (words.length < 3)  return 'Too short — please enter at least 3 words to analyze.';
-            if (content.length < 30) return 'Content too short to analyze meaningfully.';
+            if (words.length < 3) return 'Too short — please enter at least 3 words to analyze.';
+            if (content.length < 15) return 'Content too short to analyze meaningfully.';
             return null;
         }
 
@@ -780,7 +790,7 @@
         }
 
         runBtn.addEventListener('click', async () => {
-            const content = textarea.value.trim();
+            const content = normaliseInput(textarea.value.trim());
             const validationError = validateInput(content);
             if (validationError) {
                 showInputError(validationError);
@@ -798,9 +808,16 @@
             ];
 
             try {
-                // Ensure the access token is fresh before the request so the
-                // backend can attach this analysis to the logged-in user.
-                if (isLoggedIn()) await tryRefreshToken();
+                // Ensure the access token is fresh so the backend can attach the
+                // analysis to the logged-in user. If the refresh fails (both tokens
+                // expired), clear auth so the user knows they're not signed in.
+                if (isLoggedIn()) {
+                    const refreshed = await tryRefreshToken();
+                    if (!refreshed && isLoggedIn()) {
+                        // Refresh token expired — clear stale session silently
+                        clearAuth();
+                    }
+                }
 
                 const type = content.startsWith('http://') || content.startsWith('https://') ? 'url' : 'text';
                 const response = await fetch('/api/Analysis', {
@@ -813,9 +830,20 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    sessionStorage.setItem('analysisResult', JSON.stringify(data.result || data));
+                    const result = data.result || data;
+
+                    // Pre-filter rejection (too short / gibberish) — show inline error, don't redirect
+                    if (result.isRejected) {
+                        stepTimers.forEach(clearTimeout);
+                        hideLoadingOverlay();
+                        showInputError(result.explanation || result.summary || 'Content could not be analysed. Please provide a news article or headline.');
+                        return;
+                    }
+
+                    sessionStorage.setItem('analysisResult', JSON.stringify(result));
                     sessionStorage.setItem('analysisId', data.analysisId || ('VN-' + Date.now().toString(36).toUpperCase()));
                     sessionStorage.setItem('analysisSaved', JSON.stringify(data.saved !== false));
+                    sessionStorage.setItem('analysisSavedForUser', JSON.stringify(data.savedForUser === true));
                     sessionStorage.setItem('analysisType', type);
                     sessionStorage.setItem('analysisUrl', type === 'url' ? content : '');
                     sessionStorage.setItem('analysisContent', type === 'text' ? content : '');

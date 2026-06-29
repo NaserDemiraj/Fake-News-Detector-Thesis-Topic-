@@ -13,6 +13,7 @@ Usage:
 import argparse
 import json
 import time
+import pickle
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -140,6 +141,12 @@ def run(args):
     with open(out_path, "w") as f:
         json.dump(metrics, f, indent=2)
     print(f"  Metrics saved to: {out_path}")
+
+    # Save trained model for cross-dataset testing
+    model_path = "baseline_model.pkl"
+    with open(model_path, "wb") as f:
+        pickle.dump({"vectorizer": vec, "classifier": clf}, f)
+    print(f"  Model saved to:   {model_path}  (use cross_dataset.py to test on LIAR)")
 
     # Optional confusion matrix plot
     if HAS_PLOT:
