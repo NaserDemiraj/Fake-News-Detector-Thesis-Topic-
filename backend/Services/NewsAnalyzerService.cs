@@ -55,7 +55,7 @@ namespace FakeNewsDetector.Services
 
             if (!string.IsNullOrEmpty(cerebrasKey) && !cerebrasKey.StartsWith("SET_VIA") && !cerebrasKey.StartsWith("PASTE"))
             {
-                var model = configuration["Cerebras:Model"] ?? "llama-3.3-70b";
+                var model = configuration["Cerebras:Model"] ?? "gpt-oss-120b";
                 _providers.Add(new AiProvider("Cerebras", cerebrasKey, model, "https://api.cerebras.ai/v1/chat/completions"));
             }
 
