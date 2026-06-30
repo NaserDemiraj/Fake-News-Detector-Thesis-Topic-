@@ -7,6 +7,7 @@
 <script src="/theme.js"></script>
 <script src="/auth.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
@@ -131,7 +132,7 @@
 </nav>
 <div class="flex items-center gap-sm">
 <div class="flex gap-2">
-<button onclick="downloadPDF()" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
+<button onclick="downloadPDF(this)" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
 <span class="material-symbols-outlined text-[18px]">download</span> PDF
                 </button>
 <button onclick="downloadPNG(this)" class="btn-3d flex items-center gap-xs bg-surface-container-high text-on-surface px-sm py-1.5 rounded-lg font-label-sm text-label-sm">
@@ -914,8 +915,55 @@
     });
 
     // PDF / PNG / JSON download (defined globally so onclick attributes can access them)
-    function downloadPDF() {
-        window.print();
+    // Generates a real multi-page A4 PDF from the report via html2canvas + jsPDF.
+    // Falls back to the browser print dialog if the libraries haven't loaded.
+    async function downloadPDF(btn) {
+        const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+        if (typeof html2canvas === 'undefined' || !jsPDFCtor) {
+            // Libraries not ready (e.g. CDN blocked) — fall back to print-to-PDF.
+            window.print();
+            return;
+        }
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_top</span> ...';
+        }
+        try {
+            const canvas = await html2canvas(document.querySelector('main'), {
+                backgroundColor: '#02040A',
+                scale: 2,
+                useCORS: true,
+                ignoreElements: el => el.id === 'mock-banner' || el.id === 'unsaved-banner'
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDFCtor('p', 'mm', 'a4');
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const imgH = (canvas.height * pageW) / canvas.width;  // scale image to page width
+
+            // Paginate: draw the full image, shifting it up one page height at a time.
+            let position = 0;
+            let heightLeft = imgH;
+            pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+            heightLeft -= pageH;
+            while (heightLeft > 0) {
+                position -= pageH;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+                heightLeft -= pageH;
+            }
+            const id = (sessionStorage.getItem('analysisId') || 'report').slice(0, 16);
+            pdf.save('analysis-' + id + '.pdf');
+        } catch (e) {
+            alert('PDF export failed: ' + e.message + '\nFalling back to print dialog.');
+            window.print();
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
     }
     async function downloadPNG(btn) {
         if (typeof html2canvas === 'undefined') {
