@@ -101,7 +101,10 @@ namespace FakeNewsDetector.Services
                 return MockAnalysis();
             }
 
-            // Start Tavily + Google Fact Check in parallel with the LLM call
+            // Gather web evidence FIRST, then feed it into the prompt so the model can
+            // actually reason over it (real grounding). The two searches still run
+            // concurrently with each other; we await both before calling the LLM.
+            // Fact-check results go first (they're the strongest signal).
             var searchQuery = ExtractSearchQuery(content);
             var tavilyTask = _tavily.IsEnabled
                 ? _tavily.SearchAsync(searchQuery)
@@ -110,23 +113,32 @@ namespace FakeNewsDetector.Services
                 ? _factCheck.SearchAsync(searchQuery)
                 : Task.FromResult(new List<EvidencePoint>());
 
+            List<EvidencePoint> evidence;
+            try
+            {
+                var factCheckEvidence = await factCheckTask;
+                var webEvidence = await tavilyTask;
+                evidence = factCheckEvidence.Concat(webEvidence).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Evidence search failed — proceeding without grounding");
+                evidence = new List<EvidencePoint>();
+            }
+
             foreach (var provider in _providers)
             {
                 try
                 {
-                    _logger.LogInformation("Trying provider: {Provider}", provider.Name);
-                    var json = await CallAIWithRetryAsync(content, provider);
+                    _logger.LogInformation("Trying provider: {Provider} (grounding with {Count} evidence point(s))", provider.Name, evidence.Count);
+                    var json = await CallAIWithRetryAsync(content, provider, evidence);
                     var result = AnalysisResultParser.Parse(json);
                     ApplyVerdictThreshold(result);
                     _logger.LogInformation("Analysis complete via {Provider}. Verdict: {Verdict}, Score: {Score}", provider.Name, result.Verdict, result.Score);
 
-                    // Merge Tavily + Fact Check evidence into the result
-                    // Fact-check results go first (they're the strongest signal)
-                    var factCheckEvidence = await factCheckTask;
-                    var webEvidence = await tavilyTask;
-                    var allEvidence = factCheckEvidence.Concat(webEvidence).ToList();
-                    if (allEvidence.Count > 0)
-                        result.EvidencePoints = allEvidence.Concat(result.EvidencePoints).ToList();
+                    // Also attach the raw evidence to the result for the UI
+                    if (evidence.Count > 0)
+                        result.EvidencePoints = evidence.Concat(result.EvidencePoints).ToList();
 
                     return result;
                 }
@@ -140,13 +152,13 @@ namespace FakeNewsDetector.Services
             return MockAnalysis();
         }
 
-        private async Task<string> CallAIWithRetryAsync(string content, AiProvider provider, int maxRetries = 3)
+        private async Task<string> CallAIWithRetryAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence, int maxRetries = 3)
         {
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
                 try
                 {
-                    return await CallAIApiAsync(content, provider);
+                    return await CallAIApiAsync(content, provider, evidence);
                 }
                 catch (Exception ex) when (attempt < maxRetries)
                 {
@@ -155,17 +167,17 @@ namespace FakeNewsDetector.Services
                     await Task.Delay(delay);
                 }
             }
-            return await CallAIApiAsync(content, provider);
+            return await CallAIApiAsync(content, provider, evidence);
         }
 
-        private async Task<string> CallAIApiAsync(string content, AiProvider provider)
+        private async Task<string> CallAIApiAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence)
         {
             const int maxContentLength = 5000;
             var truncated = content.Length > maxContentLength
                 ? content.Substring(0, maxContentLength) + "\n\n[... content truncated ...]"
                 : content;
 
-            var prompt = BuildPrompt(truncated);
+            var prompt = BuildPrompt(truncated, evidence);
 
             // Ollama's small local models don't reliably support response_format=json_object;
             // rely on prompt-level instruction + ExtractJson() to recover the JSON.
@@ -197,12 +209,12 @@ namespace FakeNewsDetector.Services
                 .GetString() ?? "{}";
         }
 
-        private string BuildPrompt(string truncated)
+        private string BuildPrompt(string truncated, IReadOnlyList<EvidencePoint>? evidence = null)
         {
             var useSkepticism = _promptVariant is "skepticism" or "full";
             var useFewShot    = _promptVariant is "few_shot"   or "full";
 
-            const string schema = @"{""verdict"":""likely_true""|""likely_fake""|""uncertain"",""score"":0-100,""confidence"":0.0-1.0,""language"":""en"",""language_name"":""English"",""explanation"":""1-2 sentences"",""red_flags"":[""⚠ short flag""],""highlighted_sentences"":[{""flag"":""⚠ exact flag text"",""sentence"":""verbatim ≤120 chars from CONTENT"",""reason"":""brief why""}],""credibility_signals"":[""✓ short signal""],""bias_detection"":{""emotional_language_score"":0-100,""fear_mongering"":false,""political_bias"":""neutral""|""left""|""right""|""mixed"",""manipulation_tactics"":[],""clarity"":""word""},""factors"":[{""name"":""short"",""score"":0-100,""details"":""brief""}],""evidence_points"":[{""text"":""brief"",""status"":""verified""|""warning""|""unverified""}]}";
+            const string schema = @"{""reasoning"":""think step by step FIRST: list the central factual claims, then for each say whether the WEB EVIDENCE supports/contradicts/omits it, then justify the score"",""verdict"":""likely_true""|""likely_fake""|""uncertain"",""score"":0-100,""confidence"":0.0-1.0,""language"":""en"",""language_name"":""English"",""explanation"":""1-2 sentences"",""red_flags"":[""⚠ short flag""],""highlighted_sentences"":[{""flag"":""⚠ exact flag text"",""sentence"":""verbatim ≤120 chars from CONTENT"",""reason"":""brief why""}],""credibility_signals"":[""✓ short signal""],""bias_detection"":{""emotional_language_score"":0-100,""fear_mongering"":false,""political_bias"":""neutral""|""left""|""right""|""mixed"",""manipulation_tactics"":[],""clarity"":""word""},""factors"":[{""name"":""short"",""score"":0-100,""details"":""brief""}],""evidence_points"":[{""text"":""brief"",""status"":""verified""|""warning""|""unverified""}]}";
 
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("You are a fact-checking AI that assesses news content authenticity. Reply ONLY with JSON — no extra text, no markdown.");
@@ -234,12 +246,40 @@ namespace FakeNewsDetector.Services
                 sb.AppendLine(@"JSON: {""verdict"":""uncertain"",""score"":50,""confidence"":0.30,""language"":""en"",""language_name"":""English"",""explanation"":""Not a news article — no factual claims, sources, or reportable events."",""red_flags"":[],""highlighted_sentences"":[],""credibility_signals"":[],""bias_detection"":{""emotional_language_score"":0,""fear_mongering"":false,""political_bias"":""neutral"",""manipulation_tactics"":[],""clarity"":""N/A""},""factors"":[],""evidence_points"":[]}");
             }
 
+            // Real grounding: feed live search results into the prompt so the verdict
+            // is based on whether the claims are actually corroborated — not just style.
+            if (evidence is { Count: > 0 })
+            {
+                sb.AppendLine();
+                sb.AppendLine("WEB EVIDENCE (live search results — use these to verify the CONTENT's claims):");
+                int i = 1;
+                foreach (var e in evidence.Take(6))
+                {
+                    var src = string.IsNullOrWhiteSpace(e.Source) ? "" : $" [source: {e.Source}]";
+                    var text = e.Text.Length > 300 ? e.Text[..300] + "…" : e.Text;
+                    sb.AppendLine($"  {i}. {text}{src}");
+                    i++;
+                }
+                sb.AppendLine();
+                sb.AppendLine("Ground your verdict in this evidence:");
+                sb.AppendLine("- Evidence CORROBORATES the main claims → lean likely_true (higher score).");
+                sb.AppendLine("- Evidence CONTRADICTS or debunks the claims → likely_fake (low score).");
+                sb.AppendLine("- Evidence is absent, irrelevant, or only tangential → uncertain; do NOT assume likely_true just because the text reads professionally.");
+                sb.AppendLine("- Set each evidence_points[].status (verified/warning/unverified) according to this evidence.");
+            }
+            else
+            {
+                sb.AppendLine();
+                sb.AppendLine("NO external evidence was retrieved for these claims. You cannot independently verify them — judge on internal consistency and red flags only, and when the core claims are unverifiable, prefer uncertain over likely_true.");
+            }
+
             sb.AppendLine();
             sb.AppendLine("Now analyze the following content. Detect its language.");
             sb.AppendLine();
             sb.AppendLine($"CONTENT: {truncated}");
             sb.AppendLine();
             sb.AppendLine("Rules:");
+            sb.AppendLine("- reasoning: fill this FIRST, before deciding score/verdict. Identify the main factual claims, check each against the WEB EVIDENCE, and only then choose a score. A professional tone is NOT evidence of truth — an unverifiable claim must not score above 70.");
             sb.AppendLine("- highlighted_sentences: quote ≤3 verbatim phrases (≤120 chars each) from CONTENT that directly triggered a red flag.");
             sb.AppendLine("- language: ISO 639-1 code (e.g. \"en\", \"sq\", \"de\").");
             sb.AppendLine("- If CONTENT is gibberish, code, or clearly not a news article, return verdict=\"uncertain\", score=50, confidence=0.3.");
