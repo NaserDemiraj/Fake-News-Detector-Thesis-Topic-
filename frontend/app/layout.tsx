@@ -17,9 +17,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    // Force dark to match the rest of the (always-dark) static site.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
           {children}
         </ThemeProvider>
       </body>

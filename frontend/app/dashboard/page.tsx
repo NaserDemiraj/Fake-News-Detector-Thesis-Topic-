@@ -84,7 +84,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">TruthLens Dashboard</h1>
-          <p className="text-gray-600 mt-1">Analytics and database records</p>
+          <p className="text-gray-400 mt-1">Analytics and database records</p>
         </div>
         <div className="flex gap-2">
           <a href="/landing.html">
@@ -98,13 +98,13 @@ export default function DashboardPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-gray-500">Loading dashboard…</div>
+        <div className="py-20 text-center text-gray-400">Loading dashboard…</div>
       ) : (
         <AnalyticsDashboard analyses={analyses} />
       )}

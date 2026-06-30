@@ -111,19 +111,19 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-[#abc7ff] to-[#00fbfb] bg-clip-text text-transparent">
             Analytics Dashboard
           </h2>
-          <p className="text-gray-600 mt-1">Overview of your news analysis activity</p>
+          <p className="text-gray-400 mt-1">Overview of your news analysis activity</p>
         </div>
-        <TrendingUp className="w-8 h-8 text-blue-600" />
+        <TrendingUp className="w-8 h-8 text-[#abc7ff]" />
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-2 border-gray-200 hover:border-blue-400 transition">
+        <Card className="border border-white/10 hover:border-[#abc7ff]/50 transition">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Analyses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-400">Total Analyses</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.total}</div>
@@ -131,39 +131,39 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-red-200 hover:border-red-400 transition bg-red-50">
+        <Card className="border border-red-500/30 hover:border-red-500/60 transition bg-red-500/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-red-400 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
               Likely Fake
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{stats.fake}</div>
-            <p className="text-xs text-red-500 mt-1">{stats.fakePercent}% of total</p>
+            <div className="text-3xl font-bold text-red-400">{stats.fake}</div>
+            <p className="text-xs text-red-400/80 mt-1">{stats.fakePercent}% of total</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-green-200 hover:border-green-400 transition bg-green-50">
+        <Card className="border border-green-500/30 hover:border-green-500/60 transition bg-green-500/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-600 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-green-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               Likely True
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.legit}</div>
-            <p className="text-xs text-green-500 mt-1">{stats.legitPercent}% of total</p>
+            <div className="text-3xl font-bold text-green-400">{stats.legit}</div>
+            <p className="text-xs text-green-400/80 mt-1">{stats.legitPercent}% of total</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-yellow-200 hover:border-yellow-400 transition bg-yellow-50">
+        <Card className="border border-yellow-500/30 hover:border-yellow-500/60 transition bg-yellow-500/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-600">Average Score</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-400">Average Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{stats.avgScore}</div>
-            <p className="text-xs text-yellow-500 mt-1">out of 100</p>
+            <div className="text-3xl font-bold text-yellow-400">{stats.avgScore}</div>
+            <p className="text-xs text-yellow-400/80 mt-1">out of 100</p>
           </CardContent>
         </Card>
       </div>
@@ -171,7 +171,7 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Verdict Distribution Pie Chart */}
         {verdictData.length > 0 && (
-          <Card className="border-2 border-gray-200">
+          <Card className="border border-white/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
@@ -206,27 +206,28 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
 
         {/* Timeline Chart */}
         {stats.timelineData.length > 0 && (
-          <Card className="border-2 border-gray-200">
+          <Card className="border border-white/10">
             <CardHeader>
               <CardTitle>Analysis Timeline</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={stats.timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: "#9aa4b2" }}
                     angle={-45}
                     textAnchor="end"
                     height={80}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12, fill: "#9aa4b2" }} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #ccc",
+                      backgroundColor: "#0b1221",
+                      border: "1px solid #1f2937",
                       borderRadius: "8px",
+                      color: "#e2e2e2",
                     }}
                   />
                   <Line
@@ -246,7 +247,7 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
 
       {/* Top Domains */}
       {stats.topDomains.length > 0 && (
-        <Card className="border-2 border-gray-200">
+        <Card className="border border-white/10">
           <CardHeader>
             <CardTitle>Most Analyzed Domains</CardTitle>
           </CardHeader>
@@ -255,15 +256,15 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
               {stats.topDomains.map((domain, index) => (
                 <div
                   key={domain.domain}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 transition"
                 >
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="w-8 h-8 flex items-center justify-center rounded-full">
                       {index + 1}
                     </Badge>
-                    <span className="font-medium text-gray-800">{domain.domain}</span>
+                    <span className="font-medium text-gray-200">{domain.domain}</span>
                   </div>
-                  <Badge className="bg-blue-100 text-blue-800">{domain.count} analyses</Badge>
+                  <Badge className="bg-[#abc7ff]/15 text-[#abc7ff]">{domain.count} analyses</Badge>
                 </div>
               ))}
             </div>
@@ -273,11 +274,11 @@ export default function AnalyticsDashboard({ analyses }: AnalyticsDashboardProps
 
       {/* Empty State */}
       {analyses.length === 0 && (
-        <Card className="border-2 border-dashed border-gray-300 bg-gray-50">
+        <Card className="border border-dashed border-white/20 bg-white/5">
           <CardContent className="py-12">
             <div className="text-center">
-              <Eye className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">No analyses yet</p>
+              <Eye className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-300 font-medium">No analyses yet</p>
               <p className="text-gray-500 text-sm mt-1">Start analyzing articles to see statistics here</p>
             </div>
           </CardContent>

@@ -77,8 +77,58 @@
     --shadow-xl: 0 12px 48px rgba(15, 23, 42, 0.1);
   }
 
+  /* Dark theme — matches the static site (#02040A bg, cyan/blue accents) */
+  .dark {
+    --surface: #02040a;
+    --surface-dim: #02040a;
+    --surface-bright: #0b1221;
+    --surface-container-lowest: #070b14;
+    --surface-container-low: #0b1221;
+    --surface-container: #0e1626;
+    --surface-container-high: #131c2e;
+    --surface-container-highest: #18233a;
+
+    --on-surface: #e2e2e2;
+    --on-surface-variant: #9aa4b2;
+
+    --primary: #abc7ff;
+    --on-primary: #02040a;
+    --primary-container: #131b2e;
+    --on-primary-container: #abc7ff;
+
+    --secondary: #00fbfb;
+    --on-secondary: #02040a;
+    --secondary-container: #0e2a4a;
+    --on-secondary-container: #abc7ff;
+
+    --tertiary: #76d275;
+    --on-tertiary: #02040a;
+
+    --error: #ff6b6b;
+    --on-error: #02040a;
+
+    --outline: #3a4456;
+    --outline-variant: #1f2937;
+
+    --background: #02040a;
+    --foreground: #e2e2e2;
+    --card: #0b1221;
+    --card-foreground: #e2e2e2;
+    --popover: #0b1221;
+    --popover-foreground: #e2e2e2;
+    --border: #1f2937;
+    --input: #131c2e;
+    --ring: #00fbfb;
+    --destructive: #ff6b6b;
+    --destructive-foreground: #02040a;
+  }
+
   html {
     color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   * {
@@ -416,5 +466,5 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--surface-dim);
+  background: var(--outline);
 }
