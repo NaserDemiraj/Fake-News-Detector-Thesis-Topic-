@@ -48,7 +48,7 @@ namespace FakeNewsDetector.Services
 
             if (!string.IsNullOrEmpty(groqKey) && !groqKey.StartsWith("SET_VIA") && !groqKey.StartsWith("PASTE"))
             {
-                var model = configuration["Groq:Model"] ?? "llama-3.1-8b-instant";
+                var model = configuration["Groq:Model"] ?? "llama-3.3-70b-versatile";
                 _providers.Add(new AiProvider("Groq", groqKey, model, "https://api.groq.com/openai/v1/chat/completions"));
             }
 
