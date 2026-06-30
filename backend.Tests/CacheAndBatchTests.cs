@@ -139,6 +139,39 @@ public class DomainCredibilityTests
     }
 }
 
+public class VerdictThresholdTests
+{
+    // Documents the score-based verdict override rules enforced in NewsAnalyzerService.
+    // These thresholds match appsettings.json defaults: FakeMax=40, TrueMin=70.
+
+    private static string ApplyThreshold(double score, double fakeMax = 40, double trueMin = 70)
+        => score <= fakeMax ? "likely_fake"
+         : score >= trueMin ? "likely_true"
+         : "uncertain";
+
+    [Theory]
+    [InlineData(0,  "likely_fake")]
+    [InlineData(40, "likely_fake")]
+    [InlineData(41, "uncertain")]
+    [InlineData(69, "uncertain")]
+    [InlineData(70, "likely_true")]
+    [InlineData(100,"likely_true")]
+    public void Threshold_DefaultBoundaries_CorrectVerdict(double score, string expected)
+        => Assert.Equal(expected, ApplyThreshold(score));
+
+    [Fact]
+    public void Threshold_MidRange55_IsUncertain_NotLikelyTrue()
+        => Assert.Equal("uncertain", ApplyThreshold(55));
+
+    [Fact]
+    public void Threshold_CustomThresholds_AreRespected()
+    {
+        // Caller can narrow the uncertain zone
+        Assert.Equal("likely_true", ApplyThreshold(65, fakeMax: 35, trueMin: 60));
+        Assert.Equal("likely_fake", ApplyThreshold(35, fakeMax: 35, trueMin: 60));
+    }
+}
+
 public class BatchRequestValidationTests
 {
     // These document the validation contract for the batch endpoint.

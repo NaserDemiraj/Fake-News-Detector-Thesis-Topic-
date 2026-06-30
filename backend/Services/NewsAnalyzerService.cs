@@ -16,6 +16,10 @@ namespace FakeNewsDetector.Services
         private readonly List<AiProvider> _providers;
         // Ablation control: zero_shot | skepticism | few_shot | full (default)
         private readonly string _promptVariant;
+        // Score-based verdict override thresholds (score 0-100).
+        // Corrects for LLM bias toward "likely_true" by enforcing the prompt's own score contract.
+        private readonly double _fakeMaxScore;
+        private readonly double _trueMinScore;
 
         public NewsAnalyzerService(ILogger<NewsAnalyzerService> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration, TavilyService tavily, FactCheckService factCheck)
         {
@@ -25,7 +29,10 @@ namespace FakeNewsDetector.Services
             _factCheck = factCheck;
             _providers = new List<AiProvider>();
             _promptVariant = configuration["PromptVariant"] ?? "full";
-            _logger.LogInformation("Prompt variant: {Variant}", _promptVariant);
+            _fakeMaxScore  = configuration.GetValue<double>("VerdictThresholds:FakeMax", 40.0);
+            _trueMinScore  = configuration.GetValue<double>("VerdictThresholds:TrueMin", 70.0);
+            _logger.LogInformation("Prompt variant: {Variant}, thresholds: fake≤{FakeMax} true≥{TrueMin}",
+                _promptVariant, _fakeMaxScore, _trueMinScore);
 
             var ollamaEnabled = configuration.GetValue<bool>("Ollama:Enabled");
             var groqKey    = configuration["Groq:ApiKey"]    ?? "";
@@ -110,6 +117,7 @@ namespace FakeNewsDetector.Services
                     _logger.LogInformation("Trying provider: {Provider}", provider.Name);
                     var json = await CallAIWithRetryAsync(content, provider);
                     var result = AnalysisResultParser.Parse(json);
+                    ApplyVerdictThreshold(result);
                     _logger.LogInformation("Analysis complete via {Provider}. Verdict: {Verdict}, Score: {Score}", provider.Name, result.Verdict, result.Score);
 
                     // Merge Tavily + Fact Check evidence into the result
@@ -240,6 +248,20 @@ namespace FakeNewsDetector.Services
             sb.Append(schema);
 
             return sb.ToString();
+        }
+
+        // Overrides the LLM's text verdict with what its numeric score says.
+        // Prevents the common LLM bias of labelling everything "likely_true" while assigning
+        // mid-range scores (50-65) that the prompt explicitly defines as "uncertain".
+        private void ApplyVerdictThreshold(AnalysisResult result)
+        {
+            if (result.IsRejected || result.IsMock || !result.Success) return;
+            var overridden = result.Score <= _fakeMaxScore ? "likely_fake"
+                           : result.Score >= _trueMinScore ? "likely_true"
+                           : "uncertain";
+            if (overridden != result.Verdict)
+                _logger.LogDebug("Verdict overridden: {Old} → {New} (score={Score})", result.Verdict, overridden, result.Score);
+            result.Verdict = overridden;
         }
 
         private static string ExtractSearchQuery(string content)

@@ -67,11 +67,12 @@ foreach ($v in $variants) {
     Write-Host $msg
 
     dotnet run --no-build -- `
-        --true  data/True.csv `
-        --fake  data/Fake.csv `
-        --max   $Max `
-        --delay $Delay `
-        --label $v.Label `
+        --true    data/True.csv `
+        --fake    data/Fake.csv `
+        --max     $Max `
+        --delay   $Delay `
+        --retries 3 `
+        --label   $v.Label `
         --output-json $outJson
 
     Stop-Process -Id $backend.Id -Force -ErrorAction SilentlyContinue
