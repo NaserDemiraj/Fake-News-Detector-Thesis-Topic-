@@ -212,8 +212,11 @@ namespace FakeNewsDetector.Controllers
                         _logger.LogWarning(ex, "Cached ResultJson is malformed for hash {Hash} — re-analyzing", contentHash[..8]);
                     }
 
-                    // Treat a deserialized result as valid only if it has a non-empty verdict
-                    if (deserialized != null && !string.IsNullOrEmpty(deserialized.Verdict))
+                    // Treat a cached result as a valid hit only if it was a real, successful
+                    // analysis — never serve a cached failure (parse error / rate-limit mock),
+                    // otherwise a one-off failure is returned forever for that exact content.
+                    if (deserialized != null && !string.IsNullOrEmpty(deserialized.Verdict)
+                        && deserialized.Success && !deserialized.IsMock && !deserialized.IsServiceUnavailable)
                     {
                         result = deserialized;
                         analysisId = cached.Id;
@@ -251,10 +254,14 @@ namespace FakeNewsDetector.Controllers
                     ContentHash = contentHash
                 };
 
+                // Never persist failed or placeholder results (parse error, rate-limit mock) —
+                // caching a one-off failure would serve it forever for that content.
+                bool resultIsReal = result.Success && !result.IsMock && !result.IsServiceUnavailable;
+
                 // Save when: (a) not cached at all, OR (b) cached but under a different user —
                 // so the current logged-in user always gets their own record in history.
-                bool needsSave = !fromCache
-                    || (CurrentUserId != null && cached?.UserId != CurrentUserId);
+                bool needsSave = resultIsReal
+                    && (!fromCache || (CurrentUserId != null && cached?.UserId != CurrentUserId));
 
                 var saved = true;
                 if (needsSave)
