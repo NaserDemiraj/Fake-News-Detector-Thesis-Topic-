@@ -1,0 +1,33 @@
+# Render Blueprint — deploys the .NET backend as a free Docker web service.
+# In Render: New + → Blueprint → pick this repo. Then fill the env vars marked
+# "sync: false" in the dashboard (they are secrets and are NOT stored in git).
+services:
+  - type: web
+    name: fake-news-backend
+    runtime: docker
+    repo: https://github.com/NaserDemiraj/Fake-News-Detector-Thesis-Topic-
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # --- secrets: set these in the Render dashboard ---
+      - key: Jwt__Key            # any random string >= 32 chars
+        sync: false
+      - key: Neon__HttpUrl       # from your Neon dashboard (SQL-over-HTTP endpoint)
+        sync: false
+      - key: Neon__ConnectionUri # from your Neon dashboard (postgres connection string)
+        sync: false
+      - key: Groq__ApiKey
+        sync: false
+      - key: Tavily__ApiKey      # required for web-grounding to work
+        sync: false
+      - key: Gemini__ApiKey      # optional fallback
+        sync: false
+      - key: FactCheck__ApiKey   # optional (Google Fact Check)
+        sync: false
+      - key: AllowedOrigins      # your Vercel URL, e.g. https://your-app.vercel.app
+        sync: false

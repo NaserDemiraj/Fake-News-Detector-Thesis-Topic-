@@ -11,6 +11,12 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render and most PaaS hosts inject the port to listen on via the PORT env var.
+// Locally PORT is unset, so the launch profile / ASPNETCORE_URLS is used instead.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+    builder.WebHost.UseUrls($"http://+:{port}");
+
 builder.WebHost.UseKestrel(o => o.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(4));
 
 builder.Services.AddControllers()
