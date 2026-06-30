@@ -943,21 +943,25 @@
                 useCORS: true,
                 ignoreElements: el => el.id === 'mock-banner' || el.id === 'unsaved-banner'
             });
-            const imgData = canvas.toDataURL('image/png');
+            // JPEG (not PNG) keeps the file small; a full-page screenshot as lossless
+            // PNG is ~10-20x larger. Quality 0.82 is visually indistinguishable here.
+            const imgData = canvas.toDataURL('image/jpeg', 0.82);
             const pdf = new jsPDFCtor('p', 'mm', 'a4');
             const pageW = pdf.internal.pageSize.getWidth();
             const pageH = pdf.internal.pageSize.getHeight();
             const imgH = (canvas.height * pageW) / canvas.width;  // scale image to page width
 
             // Paginate: draw the full image, shifting it up one page height at a time.
+            // The 'rep' alias makes jsPDF store the image ONCE and reference it on every
+            // page, instead of re-embedding the whole bitmap per page (the main bloat).
             let position = 0;
             let heightLeft = imgH;
-            pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+            pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, 'rep', 'FAST');
             heightLeft -= pageH;
             while (heightLeft > 0) {
                 position -= pageH;
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+                pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, 'rep', 'FAST');
                 heightLeft -= pageH;
             }
             const id = (sessionStorage.getItem('analysisId') || 'report').slice(0, 16);
