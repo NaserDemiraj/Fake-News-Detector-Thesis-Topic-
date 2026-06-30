@@ -1,14 +1,17 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace FakeNewsDetector.Services
 {
     // Pluggable email sender, in priority order:
-    //  1. Brevo HTTP API (Brevo:ApiKey)  — works on hosts that block outbound SMTP
-    //     ports (Hugging Face Spaces, Render, etc.). Sends over HTTPS.
-    //  2. SMTP (Smtp:Host)               — classic SMTP, for hosts that allow it.
-    //  3. Dev fallback                   — logs the message (incl. links) to the console.
+    //  1. Resend HTTP API (Resend:ApiKey) — instant signup, no SMTP ports needed.
+    //  2. Brevo HTTP API (Brevo:ApiKey)   — alternative HTTP provider.
+    //  3. SMTP (Smtp:Host)                — classic SMTP, for hosts that allow it.
+    //  4. Dev fallback                    — logs the message (incl. links) to the console.
+    // HTTP providers (1-2) work on hosts that block outbound SMTP ports (Hugging Face
+    // Spaces, Render, etc.) because they send over HTTPS/443.
     public class EmailSender : IEmailSender
     {
         private readonly IConfiguration _config;
@@ -24,12 +27,23 @@ namespace FakeNewsDetector.Services
 
         public async Task SendAsync(string to, string subject, string htmlBody)
         {
+            var resendKey = _config["Resend:ApiKey"];
             var brevoKey = _config["Brevo:ApiKey"];
             var smtpHost = _config["Smtp:Host"];
             var from = _config["Email:From"] ?? _config["Smtp:From"] ?? _config["Smtp:Username"] ?? "no-reply@verifynews.app";
             var fromName = _config["Email:FromName"] ?? "TruthLens";
 
-            // 1. Brevo HTTP API (preferred on SMTP-blocked hosts)
+            // 1. Resend HTTP API (no phone verification; instant key).
+            // Without a verified domain, Resend requires from=onboarding@resend.dev and
+            // only delivers to the account owner's email — fine for a demo.
+            if (!string.IsNullOrWhiteSpace(resendKey))
+            {
+                var resendFrom = _config["Resend:From"] ?? $"{fromName} <onboarding@resend.dev>";
+                await SendViaResendAsync(resendKey, resendFrom, to, subject, htmlBody);
+                return;
+            }
+
+            // 2. Brevo HTTP API
             if (!string.IsNullOrWhiteSpace(brevoKey))
             {
                 await SendViaBrevoAsync(brevoKey, from, fromName, to, subject, htmlBody);
@@ -49,6 +63,39 @@ namespace FakeNewsDetector.Services
                 "To:      {To}\nSubject: {Subject}\n\n{Body}\n" +
                 "====================================================================",
                 to, subject, StripHtml(htmlBody));
+        }
+
+        private async Task SendViaResendAsync(string apiKey, string from, string to, string subject, string htmlBody)
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(15); // never hang the request
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            req.Content = JsonContent.Create(new
+            {
+                from,
+                to = new[] { to },
+                subject,
+                html = htmlBody
+            });
+
+            try
+            {
+                var resp = await client.SendAsync(req);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync();
+                    _logger.LogError("Resend email to {To} failed ({Status}): {Body}", to, (int)resp.StatusCode, body);
+                    throw new Exception($"Resend email failed: {resp.StatusCode}");
+                }
+                _logger.LogInformation("Email sent via Resend to {To}: {Subject}", to, subject);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Resend email send to {To} failed", to);
+                throw;
+            }
         }
 
         private async Task SendViaBrevoAsync(string apiKey, string from, string fromName, string to, string subject, string htmlBody)
