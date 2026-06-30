@@ -55,7 +55,7 @@ namespace FakeNewsDetector.Services
 
             if (!string.IsNullOrEmpty(cerebrasKey) && !cerebrasKey.StartsWith("SET_VIA") && !cerebrasKey.StartsWith("PASTE"))
             {
-                var model = configuration["Cerebras:Model"] ?? "zai-glm-4.7";
+                var model = configuration["Cerebras:Model"] ?? "gemma-4-31b";
                 _providers.Add(new AiProvider("Cerebras", cerebrasKey, model, "https://api.cerebras.ai/v1/chat/completions"));
             }
 
@@ -241,8 +241,8 @@ namespace FakeNewsDetector.Services
             // Ollama's small local models don't reliably support response_format=json_object;
             // rely on prompt-level instruction + ExtractJson() to recover the JSON.
             object requestPayload = provider.IsOllama
-                ? new { model = provider.Model, messages = new[] { new { role = "user", content = prompt } }, temperature = 0.1, max_tokens = 1000 }
-                : new { model = provider.Model, messages = new[] { new { role = "user", content = prompt } }, temperature = 0.1, max_tokens = 1000, response_format = new { type = "json_object" } };
+                ? new { model = provider.Model, messages = new[] { new { role = "user", content = prompt } }, temperature = 0.1, max_tokens = 2500 }
+                : new { model = provider.Model, messages = new[] { new { role = "user", content = prompt } }, temperature = 0.1, max_tokens = 2500, response_format = new { type = "json_object" } };
 
             var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromMinutes(3);
