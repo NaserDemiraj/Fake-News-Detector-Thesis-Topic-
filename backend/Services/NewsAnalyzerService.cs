@@ -312,15 +312,15 @@ namespace FakeNewsDetector.Services
                 }
                 sb.AppendLine();
                 sb.AppendLine("Ground your verdict in this evidence:");
-                sb.AppendLine("- Evidence CORROBORATES the main claims → lean likely_true (higher score).");
+                sb.AppendLine("- Evidence CORROBORATES the main claims → likely_true (high score).");
                 sb.AppendLine("- Evidence CONTRADICTS or debunks the claims → likely_fake (low score).");
-                sb.AppendLine("- Evidence is absent, irrelevant, or only tangential → uncertain; do NOT assume likely_true just because the text reads professionally.");
+                sb.AppendLine("- Evidence is absent or only tangential → judge on journalistic merit: well-sourced, specific, measured reporting can still be likely_true; only lean uncertain if the content is ALSO vague, sensational, or unsourced.");
                 sb.AppendLine("- Set each evidence_points[].status (verified/warning/unverified) according to this evidence.");
             }
             else
             {
                 sb.AppendLine();
-                sb.AppendLine("NO external evidence was retrieved for these claims. You cannot independently verify them — judge on internal consistency and red flags only, and when the core claims are unverifiable, prefer uncertain over likely_true.");
+                sb.AppendLine("NO external evidence was retrieved. Judge on journalistic credibility and internal consistency: clear reporting with named/verifiable sources, specific dateable events and a measured tone can be likely_true; sensational, conspiratorial, anonymously-sourced or vague claims lean likely_fake or uncertain. Do NOT force uncertain just because there was no web hit.");
             }
 
             sb.AppendLine();
@@ -329,7 +329,7 @@ namespace FakeNewsDetector.Services
             sb.AppendLine($"CONTENT: {truncated}");
             sb.AppendLine();
             sb.AppendLine("Rules:");
-            sb.AppendLine("- reasoning: fill this FIRST, before deciding score/verdict. Identify the main factual claims, check each against the WEB EVIDENCE, and only then choose a score. A professional tone is NOT evidence of truth — an unverifiable claim must not score above 70.");
+            sb.AppendLine("- reasoning: fill this FIRST, before deciding score/verdict. Identify the main factual claims and check them against any WEB EVIDENCE. A professional tone alone does not prove an EXTRAORDINARY claim — but routine, well-sourced reporting can score high (likely_true) even without external corroboration.");
             sb.AppendLine("- highlighted_sentences: quote ≤3 verbatim phrases (≤120 chars each) from CONTENT that directly triggered a red flag.");
             sb.AppendLine("- language: ISO 639-1 code (e.g. \"en\", \"sq\", \"de\").");
             sb.AppendLine("- If CONTENT is gibberish, code, or clearly not a news article, return verdict=\"uncertain\", score=50, confidence=0.3.");
