@@ -71,6 +71,18 @@ namespace FakeNewsDetector.Services
                 _providers.Add(new AiProvider("Gemini", geminiKey, model, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"));
             }
 
+            // Reproducible benchmarks: set LlmOnlyProvider (e.g. "Groq") to disable the
+            // fallback chain and pin every request to ONE provider/model. Leave unset in
+            // production so the multi-provider fallback stays active.
+            var onlyProvider = configuration["LlmOnlyProvider"];
+            if (!string.IsNullOrWhiteSpace(onlyProvider))
+            {
+                var before = _providers.Count;
+                _providers.RemoveAll(p => !p.Name.Contains(onlyProvider, StringComparison.OrdinalIgnoreCase));
+                _logger.LogInformation("LlmOnlyProvider={Only}: pinned to {Count} provider(s) (was {Before}) — fallback disabled for reproducible runs",
+                    onlyProvider, _providers.Count, before);
+            }
+
             if (_providers.Count > 0)
                 _logger.LogInformation("AI providers loaded: {Providers}", string.Join(" → ", _providers.Select(p => p.Name)));
             else
