@@ -21,6 +21,11 @@
     "Issuer": "FakeNewsDetector",
     "Audience": "FakeNewsDetector"
   },
+  "VerdictThresholds": {
+    "_comment": "Score-based verdict override. Set FakeMax/TrueMin from Evaluation/roc_curve.py (it prints the Youden-optimal cutoff). Binary mode: set both equal to T → score>=T is 'likely_true', else 'likely_fake', no uncertain band. Band mode: FakeMax<TrueMin keeps an 'uncertain' zone between them.",
+    "FakeMax": 40,
+    "TrueMin": 70
+  },
   "AppBaseUrl": "http://localhost:3000",
   "Smtp": {
     "_comment": "Leave Host empty in dev — reset/verify links are logged to the console instead of emailed.",

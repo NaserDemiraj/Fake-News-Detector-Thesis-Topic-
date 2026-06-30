@@ -144,9 +144,11 @@ public class VerdictThresholdTests
     // Documents the score-based verdict override rules enforced in NewsAnalyzerService.
     // These thresholds match appsettings.json defaults: FakeMax=40, TrueMin=70.
 
+    // Mirrors ApplyVerdictThreshold: TrueMin checked first so the boundary
+    // matches sklearn's convention (score >= T → true).
     private static string ApplyThreshold(double score, double fakeMax = 40, double trueMin = 70)
-        => score <= fakeMax ? "likely_fake"
-         : score >= trueMin ? "likely_true"
+        => score >= trueMin ? "likely_true"
+         : score <= fakeMax ? "likely_fake"
          : "uncertain";
 
     [Theory]
@@ -169,6 +171,17 @@ public class VerdictThresholdTests
         // Caller can narrow the uncertain zone
         Assert.Equal("likely_true", ApplyThreshold(65, fakeMax: 35, trueMin: 60));
         Assert.Equal("likely_fake", ApplyThreshold(35, fakeMax: 35, trueMin: 60));
+    }
+
+    [Theory]
+    [InlineData(54, "likely_fake")]   // below T
+    [InlineData(55, "likely_true")]   // exactly T → true (sklearn convention)
+    [InlineData(56, "likely_true")]   // above T
+    public void Threshold_BinaryMode_FakeMaxEqualsTrueMin_NoUncertain(double score, string expected)
+    {
+        // Setting FakeMax == TrueMin == T (the Youden cutoff) gives a pure binary
+        // decision with no uncertain band — what roc_curve.py recommends.
+        Assert.Equal(expected, ApplyThreshold(score, fakeMax: 55, trueMin: 55));
     }
 }
 

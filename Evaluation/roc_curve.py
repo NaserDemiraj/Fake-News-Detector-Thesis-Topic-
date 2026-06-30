@@ -33,6 +33,7 @@ ax.plot([0, 1], [0, 1], "k--", lw=1, alpha=0.4, label="Random classifier (AUC = 
 
 colors = ["#4f8ef7", "#e06c3a", "#5cb85c", "#9b59b6"]
 color_i = 0
+recommended_thresholds = []  # (label, T_on_0-100, tpr, fpr) per run
 
 # ── Load LLM results ─────────────────────────────────────────────────────────
 def load_results_csv(path):
@@ -80,6 +81,28 @@ for csv_path in csvs_arg:
 
     print(f"{csv_path}: AUC={roc_auc:.3f}, best threshold={best_t*100:.0f} "
           f"(TPR={best_tpr:.2f}, FPR={best_fpr:.2f})")
+    recommended_thresholds.append((label, best_t * 100, best_tpr, best_fpr))
+
+# ── Recommended backend config (close the data → config loop) ─────────────────
+# The Youden-optimal point is a single binary cutoff. To apply it in the backend,
+# set BOTH VerdictThresholds:FakeMax and TrueMin to this value (binary mode, no
+# "uncertain" band → 100% coverage, maximised sensitivity + specificity).
+if recommended_thresholds:
+    # Average across runs if multiple; the single run otherwise.
+    avg_t = float(np.mean([t for _, t, _, _ in recommended_thresholds]))
+    print()
+    print("=" * 60)
+    print("  RECOMMENDED VERDICT THRESHOLD (from Youden's J)")
+    print("=" * 60)
+    for lbl, t, tpr_, fpr_ in recommended_thresholds:
+        print(f"    {lbl:<28} T = {t:.0f}  (sens={tpr_:.2f}, spec={1-fpr_:.2f})")
+    print(f"\n  Suggested appsettings.json (binary cutoff at T={avg_t:.0f}):")
+    print('    "VerdictThresholds": {')
+    print(f'      "FakeMax": {avg_t:.0f},')
+    print(f'      "TrueMin": {avg_t:.0f}')
+    print("    }")
+    print("  (Keep FakeMax < TrueMin instead if you want an explicit uncertain band.)")
+    print("=" * 60)
 
 # ── Load TF-IDF baseline (if available) ──────────────────────────────────────
 if os.path.exists("metrics_baseline.json"):

@@ -253,11 +253,16 @@ namespace FakeNewsDetector.Services
         // Overrides the LLM's text verdict with what its numeric score says.
         // Prevents the common LLM bias of labelling everything "likely_true" while assigning
         // mid-range scores (50-65) that the prompt explicitly defines as "uncertain".
+        //
+        // Threshold values should be set from the ROC analysis (Evaluation/roc_curve.py prints
+        // the Youden-optimal cutoff). Setting FakeMax == TrueMin == T gives a pure binary
+        // decision at T (score >= T → true) with no uncertain band and 100% coverage.
+        // TrueMin is checked first so the boundary matches sklearn's convention (score >= T → true).
         private void ApplyVerdictThreshold(AnalysisResult result)
         {
             if (result.IsRejected || result.IsMock || !result.Success) return;
-            var overridden = result.Score <= _fakeMaxScore ? "likely_fake"
-                           : result.Score >= _trueMinScore ? "likely_true"
+            var overridden = result.Score >= _trueMinScore ? "likely_true"
+                           : result.Score <= _fakeMaxScore ? "likely_fake"
                            : "uncertain";
             if (overridden != result.Verdict)
                 _logger.LogDebug("Verdict overridden: {Old} → {New} (score={Score})", result.Verdict, overridden, result.Score);

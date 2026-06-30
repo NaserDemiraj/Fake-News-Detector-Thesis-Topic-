@@ -21,6 +21,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_predict, StratifiedKFold
 
 plt.rcParams.update({
     "font.family": "DejaVu Sans",
@@ -73,15 +74,31 @@ def calibration_stats(probs, y_true, n_bins=N_BINS):
     return confs, accs, counts, ece, mce
 
 
-def platt_scale(probs_train, y_train, probs_eval):
+def platt_scale_oos(probs, y_true, n_splits=5):
     """
-    Fit Platt scaling (logistic regression on raw prob) and return calibrated probs.
-    Works on any sample size; uses all training data.
+    Out-of-sample Platt scaling via stratified k-fold cross-validation.
+
+    Each sample's calibrated probability is produced by a logistic-regression
+    scaler trained ONLY on the other folds — so the reported ECE is an honest
+    held-out estimate, not an in-sample fit. This is the defensible way to
+    report calibration gain on a small dataset (no data wasted on one split).
+
+    Returns calibrated probabilities aligned to the input order, or None if
+    there are too few samples / only one class present.
     """
-    X = probs_train.reshape(-1, 1)
+    n = len(probs)
+    pos = int(y_true.sum())
+    # Need at least n_splits per class for stratified folds to be valid
+    folds = min(n_splits, pos, n - pos)
+    if folds < 2:
+        return None
+
     lr = LogisticRegression(C=1e9, solver="lbfgs", max_iter=1000)
-    lr.fit(X, y_train)
-    return lr.predict_proba(probs_eval.reshape(-1, 1))[:, 1]
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=42)
+    calibrated = cross_val_predict(
+        lr, probs.reshape(-1, 1), y_true,
+        cv=skf, method="predict_proba")[:, 1]
+    return calibrated
 
 
 def friendly_name(path):
@@ -125,19 +142,18 @@ def draw_reliability_axis(ax_rel, ax_hist, csvs, do_platt, offsets, bar_width):
                             color=color, lw=1.5, alpha=0.35)
 
         ece_cal = None
-        if do_platt and len(df) >= 20:
-            # Use full dataset to fit and evaluate (shows maximum achievable gain).
-            # A proper estimate requires a separate held-out set.
-            probs_cal = platt_scale(probs, y_true, probs)
-            confs_c, accs_c, counts_c, ece_cal, mce_cal = calibration_stats(probs_cal, y_true)
-            color_c = COLORS_CAL[i % len(COLORS_CAL)]
-            valid_c = ~np.isnan(confs_c)
-            ax_rel.plot(confs_c[valid_c], accs_c[valid_c], "s--", lw=1.5, ms=5,
-                        color=color_c, alpha=0.85,
-                        label=f"{name} + Platt  ECE={ece_cal:.3f}")
-            print(f"  ECE_platt={ece_cal:.4f}  improvement={ece - ece_cal:.4f}", end="")
-        elif do_platt:
-            print(f"  (too few samples for Platt scaling: n={len(df)})", end="")
+        if do_platt:
+            probs_cal = platt_scale_oos(probs, y_true)
+            if probs_cal is not None:
+                confs_c, accs_c, counts_c, ece_cal, mce_cal = calibration_stats(probs_cal, y_true)
+                color_c = COLORS_CAL[i % len(COLORS_CAL)]
+                valid_c = ~np.isnan(confs_c)
+                ax_rel.plot(confs_c[valid_c], accs_c[valid_c], "s--", lw=1.5, ms=5,
+                            color=color_c, alpha=0.85,
+                            label=f"{name} + Platt (CV)  ECE={ece_cal:.3f}")
+                print(f"  ECE_platt(oos)={ece_cal:.4f}  improvement={ece - ece_cal:+.4f}", end="")
+            else:
+                print(f"  (too few samples per class for k-fold Platt: n={len(df)})", end="")
         print()
 
         bin_centers = np.linspace(0.05, 0.95, N_BINS)
@@ -191,7 +207,7 @@ if do_platt and any(row[2] is not None for row in summary):
         ece_c = f"{ece_cal:.4f}" if ece_cal is not None else "  n/a"
         print(f"{name:<22} {ece_raw:>8.4f} {ece_c:>10} {delta:>8}")
     print("-" * 56)
-    print("(Platt fit on full dataset — optimistic upper bound on calibration gain)")
+    print("(Platt scaling via 5-fold CV — out-of-sample, honest calibration gain)")
 
 # ── Reliability diagram formatting ───────────────────────────────────────────
 ax_rel.set_xlim([0, 1])
