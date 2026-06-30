@@ -15,30 +15,14 @@ A full-stack application that uses AI and natural language processing to analyze
 
 ## Quick Start
 
-1. **Open the project in VS Code**
+Run `setup.sh` (macOS/Linux) or `setup.bat` (Windows) to install dependencies,
+then start the backend and frontend in two terminals (see below).
 
-2. **Install dependencies**:
-   \`\`\`
-   npm run install-all
-   \`\`\`
-
-3. **Start both frontend and backend**:
-   - Press F5 and select "Full Stack" from the launch configuration
-   - Or run: `npm start`
-
-4. **Access the application**:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000/swagger
+Access the application:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000/swagger
 
 ## Running Separately
-
-### Frontend
-
-\`\`\`
-cd frontend
-npm install
-npm run dev
-\`\`\`
 
 ### Backend
 
@@ -46,6 +30,14 @@ npm run dev
 cd backend
 dotnet restore
 dotnet run
+\`\`\`
+
+### Frontend
+
+\`\`\`
+cd frontend
+npm install
+npm run dev
 \`\`\`
 
 ## Features

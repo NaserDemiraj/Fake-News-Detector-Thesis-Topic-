@@ -4,9 +4,6 @@
 
 echo "Setting up Fake News Detector project..."
 
-# Install root dependencies
-npm install
-
 # Setup backend
 echo "Setting up backend..."
 cd backend
@@ -21,6 +18,5 @@ echo "Frontend setup complete!"
 
 cd ..
 echo "Setup complete! You can now run the project."
-echo "To start both frontend and backend: npm start"
-echo "To start the frontend only: npm run frontend"
-echo "To start the backend only: npm run backend"
+echo "Start the backend:  cd backend  && dotnet run    (http://localhost:5000)"
+echo "Start the frontend: cd frontend && npm run dev   (http://localhost:3000)"

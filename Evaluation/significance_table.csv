@@ -1,0 +1,7 @@
+Pair,Stat,P-value,Significant,Note
+Groq Zero-Shot vs Groq + Skepticism,0.0,1.0,False,ns (identical — likely cache hit)
+Groq Zero-Shot vs Groq + Few-Shot,0.0,1.0,False,ns (identical — likely cache hit)
+Groq Zero-Shot vs Groq Full Prompt,0.0,1.0,False,ns (identical — likely cache hit)
+Groq + Skepticism vs Groq + Few-Shot,0.0,1.0,False,ns (identical — likely cache hit)
+Groq + Skepticism vs Groq Full Prompt,0.0,1.0,False,ns (identical — likely cache hit)
+Groq + Few-Shot vs Groq Full Prompt,0.0,1.0,False,ns (identical — likely cache hit)

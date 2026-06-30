@@ -1,0 +1,5 @@
+Variant,F1,CI_low,CI_high,n
+Groq Zero-Shot,0.7619,0.6274,0.8697,50
+Groq + Skepticism,0.7619,0.6316,0.8684,50
+Groq + Few-Shot,0.7619,0.6333,0.8649,50
+Groq Full Prompt,0.7619,0.6229,0.8657,50
