@@ -166,8 +166,8 @@
 <div id="mock-banner" class="hidden mb-lg flex items-start gap-sm bg-amber-900/30 border border-amber-500/40 rounded-xl px-md py-sm">
   <span class="material-symbols-outlined text-amber-400 text-xl flex-shrink-0 mt-0.5">warning</span>
   <div>
-    <p class="text-amber-300 font-label-md font-semibold text-sm">Demo result — AI not connected</p>
-    <p class="text-amber-400/80 text-xs mt-0.5">No AI API key is configured. This verdict is hardcoded mock data and does not reflect the actual content. Add a Groq API key or start Ollama to get real analysis.</p>
+    <p id="mock-banner-title" class="text-amber-300 font-label-md font-semibold text-sm">Demo result — AI not connected</p>
+    <p id="mock-banner-body" class="text-amber-400/80 text-xs mt-0.5">No AI API key is configured. This verdict is hardcoded mock data and does not reflect the actual content. Add a Groq API key or start Ollama to get real analysis.</p>
   </div>
 </div>
 <!-- Hero Section -->
@@ -508,9 +508,16 @@
         const analysisId = sessionStorage.getItem('analysisId') || ('VN-' + Math.random().toString(36).slice(2, 10).toUpperCase());
         const targetScore = result.score != null ? Math.round(result.score) : 75;
 
-        // Show mock banner if the result came from the fallback mock analyser
+        // Show mock banner if the result came from the fallback mock analyser.
+        // Distinguish "rate-limited / temporarily unavailable" from "no API key configured".
         if (result.isMock) {
             const banner = document.getElementById('mock-banner');
+            if (result.isServiceUnavailable) {
+                const t = document.getElementById('mock-banner-title');
+                const b = document.getElementById('mock-banner-body');
+                if (t) t.textContent = 'AI temporarily busy — try again shortly';
+                if (b) b.textContent = 'All AI providers are rate-limited right now (free-tier daily quota reached). The verdict below is a placeholder, not a real analysis. Please wait a few minutes and analyse again.';
+            }
             if (banner) banner.classList.remove('hidden');
         }
 

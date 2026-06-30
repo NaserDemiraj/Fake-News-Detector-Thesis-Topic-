@@ -4,6 +4,7 @@ namespace FakeNewsDetector.Models
     {
         public bool Success { get; set; }
         public bool IsMock { get; set; } = false;
+        public bool IsServiceUnavailable { get; set; } = false; // true when all AI providers failed (rate limit) — placeholder, not "no key"
         public bool IsRejected { get; set; } = false; // true when content failed pre-filter (too short / gibberish)
         public double Score { get; set; }
         public double Confidence { get; set; } = 0.8;

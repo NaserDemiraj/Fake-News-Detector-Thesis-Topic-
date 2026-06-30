@@ -148,9 +148,40 @@ namespace FakeNewsDetector.Services
                 }
             }
 
-            _logger.LogError("All AI providers failed — falling back to mock");
-            return MockAnalysis();
+            _logger.LogError("All AI providers failed (rate limit / error) — returning service-unavailable placeholder");
+            return ServiceUnavailableResult();
         }
+
+        // Returned when the API key(s) ARE configured but every provider failed (almost
+        // always the free-tier daily rate limit). Distinct from MockAnalysis() so the UI
+        // can say "try again shortly" instead of falsely claiming no key is configured.
+        private static AnalysisResult ServiceUnavailableResult() => new()
+        {
+            Success = true,
+            IsMock = true,
+            IsServiceUnavailable = true,
+            Verdict = "uncertain",
+            Score = 50,
+            Confidence = 0.0,
+            Language = "en",
+            LanguageName = "English",
+            Summary = "AI analysis is temporarily unavailable.",
+            Explanation = "All AI providers are currently rate-limited (the free-tier daily quota was reached). " +
+                          "This is not a real verdict — please try again in a few minutes.",
+            CredibilitySignals = new List<string>(),
+            RedFlags = new List<string>(),
+            HighlightedSentences = new List<SentenceHighlight>(),
+            BiasDetection = new BiasDetection
+            {
+                EmotionalLanguageScore = 0,
+                FearMongering = false,
+                PoliticalBias = "neutral",
+                Clarity = "N/A",
+                ManipulationTactics = new List<string>()
+            },
+            Factors = new List<AnalysisFactor>(),
+            EvidencePoints = new List<EvidencePoint>()
+        };
 
         private async Task<string> CallAIWithRetryAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence, int maxRetries = 3)
         {
