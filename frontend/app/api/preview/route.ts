@@ -12,13 +12,15 @@ export async function GET(request: NextRequest) {
     const urlObj = new URL(url)
     const domain = urlObj.hostname
 
-    // Try to fetch the page and extract metadata
+    // Try to fetch the page and extract metadata.
+    // Node's fetch ignores a `timeout` option — use AbortSignal so a slow page
+    // can't hang the preview request.
     const response = await fetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       },
-      timeout: 5000,
+      signal: AbortSignal.timeout(5000),
     })
 
     if (!response.ok) {

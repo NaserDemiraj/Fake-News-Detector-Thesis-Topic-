@@ -39,7 +39,22 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch("/api/Analysis/recent?count=100")
+      // The /recent endpoint is [Authorize]-protected; send the JWT the static
+      // pages store in localStorage (key 'auth_token'), matching their authFetch.
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      if (!token) {
+        setError("Please sign in to view your dashboard.")
+        setAnalyses([])
+        return
+      }
+      const res = await fetch("/api/Analysis/recent?count=100", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status === 401) {
+        setError("Your session has expired — please sign in again.")
+        setAnalyses([])
+        return
+      }
       if (!res.ok) throw new Error(`Failed to load analyses: ${res.statusText}`)
       const data: RecentRecord[] = await res.json()
       const mapped: DashboardAnalysis[] = (Array.isArray(data) ? data : []).map((r) => ({

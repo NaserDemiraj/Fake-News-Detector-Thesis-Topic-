@@ -31,8 +31,24 @@ export default function DatabaseViewer({ refreshTrigger = 0 }: DatabaseViewerPro
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch("/api/Analysis/database")
+      // /database is [Authorize]-protected; send the JWT from localStorage.
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      if (!token) {
+        setError("Please sign in to view database records.")
+        setRecords([])
+        setTotalRecords(0)
+        return
+      }
+      const response = await fetch("/api/Analysis/database", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
+      if (response.status === 401) {
+        setError("Your session has expired — please sign in again.")
+        setRecords([])
+        setTotalRecords(0)
+        return
+      }
       if (!response.ok) {
         throw new Error(`Failed to fetch records: ${response.statusText}`)
       }
