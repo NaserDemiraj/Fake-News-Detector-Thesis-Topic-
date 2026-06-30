@@ -71,6 +71,7 @@ Evaluation/metrics_ablation_*.json
 Evaluation/metrics_groq_test.json
 Evaluation/metrics_pipeline.json
 Evaluation/metrics_baseline.json
+Evaluation/metrics_model_*.json
 Evaluation/ablation_summary.json
 Evaluation/error_analysis.json
 Evaluation/*.png

@@ -39,6 +39,20 @@ Produces `results_*.csv` (per-article predictions) and `metrics_*.json` (aggrega
 | `error_analysis.py` | Categorize false positives / false negatives | `results_*.csv` | summary |
 | `model_agreement.py` | Agreement between providers/runs | multiple `results_*.csv` | summary |
 
+## Model-capacity sweep
+
+The 8B model could not separate ISOT fake from real (AUC ~0.55 — scores for
+true and fake articles overlap almost entirely). `run_models.ps1` re-runs the
+eval across larger Groq models so you can see whether capacity is the bottleneck:
+
+```powershell
+.\run_models.ps1 -Max 100
+python roc_curve.py results_model_*.csv   # compare AUC; ~0.5 = no separation
+```
+
+If AUC jumps with a bigger model, adopt it and re-tune the threshold. If it
+stays flat, the task is genuinely hard from text alone — itself a thesis finding.
+
 ## Ablation study
 
 `run_ablation.ps1` runs the harness once per prompt variant
