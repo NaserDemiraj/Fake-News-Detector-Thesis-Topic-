@@ -55,7 +55,7 @@ namespace FakeNewsDetector.Services
 
             if (!string.IsNullOrEmpty(cerebrasKey) && !cerebrasKey.StartsWith("SET_VIA") && !cerebrasKey.StartsWith("PASTE"))
             {
-                var model = configuration["Cerebras:Model"] ?? "gpt-oss-120b";
+                var model = configuration["Cerebras:Model"] ?? "zai-glm-4.7";
                 _providers.Add(new AiProvider("Cerebras", cerebrasKey, model, "https://api.cerebras.ai/v1/chat/completions"));
             }
 
@@ -152,6 +152,15 @@ namespace FakeNewsDetector.Services
                     _logger.LogInformation("Trying provider: {Provider} (grounding with {Count} evidence point(s))", provider.Name, evidence.Count);
                     var json = await CallAIWithRetryAsync(content, provider, evidence);
                     var result = AnalysisResultParser.Parse(json);
+
+                    // If this provider returned something unparseable, don't return a broken
+                    // 50/uncertain result — treat it as a failure and try the next provider.
+                    if (!result.Success)
+                    {
+                        _logger.LogWarning("Provider {Provider} returned an unparseable response — trying next", provider.Name);
+                        continue;
+                    }
+
                     ApplyVerdictThreshold(result);
                     _logger.LogInformation("Analysis complete via {Provider}. Verdict: {Verdict}, Score: {Score}", provider.Name, result.Verdict, result.Score);
 
