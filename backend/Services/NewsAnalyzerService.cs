@@ -35,9 +35,10 @@ namespace FakeNewsDetector.Services
                 _promptVariant, _fakeMaxScore, _trueMinScore);
 
             var ollamaEnabled = configuration.GetValue<bool>("Ollama:Enabled");
-            var groqKey    = configuration["Groq:ApiKey"]    ?? "";
-            var xaiKey     = configuration["XAI:ApiKey"]     ?? "";
-            var geminiKey  = configuration["Gemini:ApiKey"]  ?? "";
+            var groqKey     = configuration["Groq:ApiKey"]     ?? "";
+            var cerebrasKey = configuration["Cerebras:ApiKey"] ?? "";
+            var xaiKey      = configuration["XAI:ApiKey"]      ?? "";
+            var geminiKey   = configuration["Gemini:ApiKey"]   ?? "";
 
             if (ollamaEnabled)
             {
@@ -50,6 +51,12 @@ namespace FakeNewsDetector.Services
             {
                 var model = configuration["Groq:Model"] ?? "llama-3.3-70b-versatile";
                 _providers.Add(new AiProvider("Groq", groqKey, model, "https://api.groq.com/openai/v1/chat/completions"));
+            }
+
+            if (!string.IsNullOrEmpty(cerebrasKey) && !cerebrasKey.StartsWith("SET_VIA") && !cerebrasKey.StartsWith("PASTE"))
+            {
+                var model = configuration["Cerebras:Model"] ?? "llama-3.3-70b";
+                _providers.Add(new AiProvider("Cerebras", cerebrasKey, model, "https://api.cerebras.ai/v1/chat/completions"));
             }
 
             if (!string.IsNullOrEmpty(xaiKey) && !xaiKey.StartsWith("SET_VIA") && !xaiKey.StartsWith("PASTE"))
