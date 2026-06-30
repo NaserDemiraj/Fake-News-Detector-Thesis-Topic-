@@ -84,7 +84,8 @@ liar_cm   = confusion_matrix(y_true, y_pred)
 # ── Load baseline ISOT metrics (from baseline.py run) ────────────────────────
 isot_metrics = {}
 if os.path.exists("metrics_baseline.json"):
-    with open("metrics_baseline.json") as f:
+    # utf-8-sig: PowerShell writes metrics JSON with a UTF-8 BOM
+    with open("metrics_baseline.json", encoding="utf-8-sig") as f:
         isot_metrics = json.load(f)
 
 
@@ -92,7 +93,7 @@ if os.path.exists("metrics_baseline.json"):
 def load_llm_metrics(path):
     if not os.path.exists(path):
         return None
-    with open(path) as f:
+    with open(path, encoding="utf-8-sig") as f:
         return json.load(f)
 
 llm_isot = load_llm_metrics("metrics_groq_fewshot.json") or \

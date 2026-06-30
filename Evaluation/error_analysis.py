@@ -13,6 +13,12 @@ import os
 import json
 import pandas as pd
 
+# Windows consoles default to cp1252 and choke on the Unicode arrows/banners below.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # ── Find CSV ──────────────────────────────────────────────────────────────────
 if len(sys.argv) > 1:
     csv_path = sys.argv[1]

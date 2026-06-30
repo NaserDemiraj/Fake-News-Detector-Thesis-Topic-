@@ -32,6 +32,7 @@ Produces `results_*.csv` (per-article predictions) and `metrics_*.json` (aggrega
 | `significance.py` | McNemar's test + bootstrap F1 CI between ablation variants | `results_*.csv` + `metrics_ablation_*.json` | `significance_table.csv`, `bootstrap_f1.csv` |
 | `adversarial.py` | Verdict stability under text perturbations (typo/swap/caps/noise) | API + `data/*.csv` | `adversarial_results.csv` |
 | `prompt_injection.py` | Robustness to instructions hidden in the article text (with a control condition) | API + `data/*.csv` | `prompt_injection_results.csv`, `prompt_injection.png` |
+| `cost_latency.py` | Accuracy vs. latency vs. estimated $/1k analyses across providers | `metrics_*.json` | `cost_latency.csv`, `cost_latency.png` |
 | `cross_dataset.py` | Generalization: train on ISOT, test on LIAR (baseline vs LLM) | `baseline_model.pkl`, LIAR data | figures |
 | `liar_prep.py` | Convert the LIAR dataset into the harness format | LIAR `.tsv` | normalized CSV |
 | `coverage_curve.py` | Accuracy vs. abstention (uncertain) trade-off | `results_*.csv` | figure |
@@ -44,12 +45,27 @@ Produces `results_*.csv` (per-article predictions) and `metrics_*.json` (aggrega
 (`zero_shot | skepticism | few_shot | full`), each with `--retries 3` and
 cache bypass, producing `metrics_ablation_*.json` for `significance.py`.
 
-## Suggested order
+## One-command pipeline
 
-1. Run the C# harness (≥200/class) → `results_*.csv`, `metrics_*.json`
-2. `baseline.py` → classical baseline to compare against
-3. `roc_curve.py` → read off the optimal threshold, set it in backend `VerdictThresholds`
-4. `calibration.py --platt` → calibration before/after
-5. `significance.py` → is the best ablation variant significantly better?
-6. `adversarial.py` / `prompt_injection.py` → robustness
-7. `cross_dataset.py` → generalization to LIAR
+`run_full_evaluation.ps1` chains every analysis step, isolates failures (one
+broken step doesn't abort the rest), and collects all figures into `figures/`.
+
+```powershell
+.\run_full_evaluation.ps1                      # analyse the newest results_*.csv
+.\run_full_evaluation.ps1 -Max 200             # run the live harness first (needs backend + key)
+.\run_full_evaluation.ps1 -ResultsCsv results_200.csv
+.\run_full_evaluation.ps1 -Max 200 -Live -Injection   # full run incl. live robustness tests
+```
+
+It sets `PYTHONIOENCODING=utf-8` so Unicode banners don't crash the Windows console.
+
+## Suggested order (if running manually)
+
+1. Run the C# harness (>=200/class) -> `results_*.csv`, `metrics_*.json`
+2. `baseline.py` -> classical baseline to compare against
+3. `roc_curve.py` -> read off the optimal threshold, set it in backend `VerdictThresholds`
+4. `calibration.py --platt` -> calibration before/after
+5. `significance.py` -> is the best ablation variant significantly better?
+6. `cost_latency.py` -> is the LLM worth it vs. the baseline?
+7. `adversarial.py` / `prompt_injection.py` -> robustness
+8. `liar_prep.py` then `cross_dataset.py` -> generalization to LIAR

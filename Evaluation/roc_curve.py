@@ -106,7 +106,7 @@ if recommended_thresholds:
 
 # ── Load TF-IDF baseline (if available) ──────────────────────────────────────
 if os.path.exists("metrics_baseline.json"):
-    with open("metrics_baseline.json") as f:
+    with open("metrics_baseline.json", encoding="utf-8-sig") as f:  # utf-8-sig: strip BOM
         bl = json.load(f)
     # Baseline is a point estimate (no continuous score), plot as a single point
     precision = bl.get("precision", 0)

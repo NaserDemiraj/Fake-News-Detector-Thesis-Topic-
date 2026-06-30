@@ -13,14 +13,21 @@ Output:
     data/liar_fake.csv   — statements rated "false" or "pants-fire"
 """
 
+import argparse
 import os
 import zipfile
 import requests
 import pandas as pd
 
 DATA_DIR = "data"
-ZIP_URL  = "https://www.cs.ucsb.edu/~william/data/liar_dataset.zip"
+# The original UCSB host is frequently down; try mirrors in order.
+ZIP_URLS = [
+    "https://www.cs.ucsb.edu/~william/data/liar_dataset.zip",
+    "https://huggingface.co/datasets/liar/resolve/main/liar_dataset.zip",
+    "https://github.com/thiagorainmaker77/liar_dataset/raw/master/liar_dataset.zip",
+]
 ZIP_PATH = os.path.join(DATA_DIR, "liar_dataset.zip")
+TSV_FILES = ["train.tsv", "test.tsv", "valid.tsv"]
 
 COLUMNS = [
     "id", "label", "statement", "subject", "speaker",
@@ -34,17 +41,34 @@ TRUE_LABELS = {"true", "mostly-true"}
 FAKE_LABELS = {"false", "pants-fire"}
 
 
+def already_extracted() -> bool:
+    return all(os.path.exists(os.path.join(DATA_DIR, f)) for f in TSV_FILES)
+
+
 def download():
     os.makedirs(DATA_DIR, exist_ok=True)
     if os.path.exists(ZIP_PATH):
         print(f"  Already downloaded: {ZIP_PATH}")
         return
-    print(f"  Downloading LIAR dataset from UCSB...")
-    r = requests.get(ZIP_URL, timeout=30)
-    r.raise_for_status()
-    with open(ZIP_PATH, "wb") as f:
-        f.write(r.content)
-    print(f"  Saved to {ZIP_PATH}")
+    last_err = None
+    for url in ZIP_URLS:
+        try:
+            print(f"  Downloading LIAR dataset from {url} ...")
+            r = requests.get(url, timeout=30)
+            r.raise_for_status()
+            with open(ZIP_PATH, "wb") as f:
+                f.write(r.content)
+            print(f"  Saved to {ZIP_PATH}")
+            return
+        except Exception as e:
+            last_err = e
+            print(f"    failed ({e}); trying next mirror...")
+    # All mirrors failed — give clear manual instructions.
+    raise SystemExit(
+        "\nERROR: could not download the LIAR dataset from any mirror.\n"
+        f"Last error: {last_err}\n\n"
+        "Manual fix: download liar_dataset.zip (search 'LIAR dataset PolitiFact'),\n"
+        f"place train.tsv / test.tsv / valid.tsv directly in '{DATA_DIR}/', then re-run.\n")
 
 
 def extract():
@@ -80,14 +104,24 @@ def convert(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--balance", action="store_true",
+                        help="Downsample the larger class so true/fake counts match "
+                             "(fair comparison with balanced ISOT)")
+    cli = parser.parse_args()
+
     print()
     print("╔══════════════════════════════════════════════╗")
     print("║          LIAR Dataset Preparation            ║")
     print("╚══════════════════════════════════════════════╝")
     print()
 
-    download()
-    extract()
+    # Skip the (flaky) download if the TSVs are already present.
+    if already_extracted():
+        print("  TSV files already present — skipping download/extract.")
+    else:
+        download()
+        extract()
 
     # Combine train + test + validation splits for maximum coverage
     splits = []
@@ -107,6 +141,12 @@ def main():
         print(f"    {marker}  {label:<15} {count}")
 
     true_df, fake_df = convert(df)
+
+    if cli.balance:
+        n = min(len(true_df), len(fake_df))
+        true_df = true_df.sample(n, random_state=42).reset_index(drop=True)
+        fake_df = fake_df.sample(n, random_state=42).reset_index(drop=True)
+        print(f"\n  Balanced to {n} per class.")
 
     true_path = os.path.join(DATA_DIR, "liar_true.csv")
     fake_path = os.path.join(DATA_DIR, "liar_fake.csv")
