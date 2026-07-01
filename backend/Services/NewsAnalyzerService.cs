@@ -89,9 +89,9 @@ namespace FakeNewsDetector.Services
                 _logger.LogWarning("No AI providers configured — mock mode active");
         }
 
-        public async Task<AnalysisResult> AnalyzeContentAsync(string content)
+        public async Task<AnalysisResult> AnalyzeContentAsync(string content, string? sourceUrl = null)
         {
-            _logger.LogInformation("Analyzing content, length: {Length}", content.Length);
+            _logger.LogInformation("Analyzing content, length: {Length}, source: {Source}", content.Length, sourceUrl ?? "none");
 
             var words = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (words.Length < 5)
@@ -150,7 +150,7 @@ namespace FakeNewsDetector.Services
                 try
                 {
                     _logger.LogInformation("Trying provider: {Provider} (grounding with {Count} evidence point(s))", provider.Name, evidence.Count);
-                    var json = await CallAIWithRetryAsync(content, provider, evidence);
+                    var json = await CallAIWithRetryAsync(content, provider, evidence, sourceUrl);
                     var result = AnalysisResultParser.Parse(json);
 
                     // If this provider returned something unparseable, don't return a broken
@@ -211,13 +211,13 @@ namespace FakeNewsDetector.Services
             EvidencePoints = new List<EvidencePoint>()
         };
 
-        private async Task<string> CallAIWithRetryAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence, int maxRetries = 3)
+        private async Task<string> CallAIWithRetryAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence, string? sourceUrl = null, int maxRetries = 3)
         {
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
                 try
                 {
-                    return await CallAIApiAsync(content, provider, evidence);
+                    return await CallAIApiAsync(content, provider, evidence, sourceUrl);
                 }
                 catch (Exception ex) when (attempt < maxRetries)
                 {
@@ -226,17 +226,17 @@ namespace FakeNewsDetector.Services
                     await Task.Delay(delay);
                 }
             }
-            return await CallAIApiAsync(content, provider, evidence);
+            return await CallAIApiAsync(content, provider, evidence, sourceUrl);
         }
 
-        private async Task<string> CallAIApiAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence)
+        private async Task<string> CallAIApiAsync(string content, AiProvider provider, IReadOnlyList<EvidencePoint> evidence, string? sourceUrl = null)
         {
             const int maxContentLength = 5000;
             var truncated = content.Length > maxContentLength
                 ? content.Substring(0, maxContentLength) + "\n\n[... content truncated ...]"
                 : content;
 
-            var prompt = BuildPrompt(truncated, evidence);
+            var prompt = BuildPrompt(truncated, evidence, sourceUrl);
 
             // Ollama's small local models don't reliably support response_format=json_object;
             // rely on prompt-level instruction + ExtractJson() to recover the JSON.
@@ -268,7 +268,7 @@ namespace FakeNewsDetector.Services
                 .GetString() ?? "{}";
         }
 
-        private string BuildPrompt(string truncated, IReadOnlyList<EvidencePoint>? evidence = null)
+        private string BuildPrompt(string truncated, IReadOnlyList<EvidencePoint>? evidence = null, string? sourceUrl = null)
         {
             var useSkepticism = _promptVariant is "skepticism" or "full";
             var useFewShot    = _promptVariant is "few_shot"   or "full";
@@ -334,6 +334,19 @@ namespace FakeNewsDetector.Services
 
             sb.AppendLine();
             sb.AppendLine("Now analyze the following content. Detect its language.");
+
+            // Tell the model where this content came from — domain reputation is a strong signal
+            if (!string.IsNullOrEmpty(sourceUrl) && Uri.TryCreate(sourceUrl, UriKind.Absolute, out var parsedUri))
+            {
+                sb.AppendLine($"SOURCE URL: {sourceUrl}");
+                sb.AppendLine($"SOURCE DOMAIN: {parsedUri.Host}");
+                sb.AppendLine("Weight the source domain's established editorial reputation when calibrating the score. " +
+                              "Major wire services and national broadcasters (e.g. reuters.com, apnews.com, bbc.com, nytimes.com) " +
+                              "have editorial oversight that counts as a strong credibility signal. " +
+                              "Unknown, tabloid, or satire domains reduce credibility. " +
+                              "If only OG/meta text was available (paywalled page), note this in the reasoning.");
+            }
+
             sb.AppendLine();
             sb.AppendLine($"CONTENT: {truncated}");
             sb.AppendLine();

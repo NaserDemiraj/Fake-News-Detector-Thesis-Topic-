@@ -225,13 +225,13 @@ namespace FakeNewsDetector.Controllers
                     }
                     else
                     {
-                        result = await _analyzerService.AnalyzeContentAsync(content);
+                        result = await _analyzerService.AnalyzeContentAsync(content, sourceUrl: sourceUrl);
                         analysisId = Guid.NewGuid().ToString();
                     }
                 }
                 else
                 {
-                    result = await _analyzerService.AnalyzeContentAsync(content);
+                    result = await _analyzerService.AnalyzeContentAsync(content, sourceUrl: sourceUrl);
                     analysisId = Guid.NewGuid().ToString();
                 }
 

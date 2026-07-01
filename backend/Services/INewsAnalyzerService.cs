@@ -4,6 +4,6 @@ namespace FakeNewsDetector.Services
 {
     public interface INewsAnalyzerService
     {
-        Task<AnalysisResult> AnalyzeContentAsync(string content);
+        Task<AnalysisResult> AnalyzeContentAsync(string content, string? sourceUrl = null);
     }
 }

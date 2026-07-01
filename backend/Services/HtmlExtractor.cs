@@ -3,10 +3,6 @@ using System.Text;
 
 namespace FakeNewsDetector.Services;
 
-/// <summary>
-/// Extracts plain text and the page title from raw HTML.
-/// Isolated here so it can be unit-tested independently of the controller.
-/// </summary>
 public static class HtmlExtractor
 {
     public static (string Text, string Title) ExtractTextAndTitle(string html)
@@ -16,24 +12,48 @@ public static class HtmlExtractor
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
-            var title = doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim() ?? "";
+            // Grab OG/meta fields early — these are the fallback for paywalled pages
+            var ogTitle   = doc.DocumentNode.SelectSingleNode("//meta[@property='og:title']")?.GetAttributeValue("content", "")?.Trim() ?? "";
+            var ogDesc    = doc.DocumentNode.SelectSingleNode("//meta[@property='og:description']")?.GetAttributeValue("content", "")?.Trim() ?? "";
+            var metaDesc  = doc.DocumentNode.SelectSingleNode("//meta[@name='description']")?.GetAttributeValue("content", "")?.Trim() ?? "";
+
+            // Title: OG title beats <title> tag (cleaner, no site-name suffix)
+            var rawTitle = doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim() ?? "";
+            var title = !string.IsNullOrEmpty(ogTitle) ? ogTitle : rawTitle;
             if (string.IsNullOrEmpty(title) || title.Contains("Home") || title.Contains("Index"))
                 title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText.Trim() ?? title;
 
-            var scripts = doc.DocumentNode.SelectNodes("//script|//style");
-            if (scripts != null) foreach (var node in scripts) node.Remove();
+            // Remove boilerplate nodes before text extraction
+            var noise = doc.DocumentNode.SelectNodes("//script|//style|//nav|//header|//footer|//aside|//form|//noscript");
+            if (noise != null) foreach (var n in noise.ToList()) n.Remove();
 
-            var bodyNode = doc.DocumentNode.SelectSingleNode("//body");
-            if (bodyNode == null) return (doc.DocumentNode.InnerText, title);
+            // Prefer <article> → <main> → <body> for article content
+            var contentRoot = doc.DocumentNode.SelectSingleNode("//article")
+                           ?? doc.DocumentNode.SelectSingleNode("//main")
+                           ?? doc.DocumentNode.SelectSingleNode("//body");
+            if (contentRoot == null) return (doc.DocumentNode.InnerText, title);
 
-            var contentNodes = bodyNode.SelectNodes("//p|//h1|//h2|//h3|//h4|//h5|//h6|//article|//section");
-            if (contentNodes == null || contentNodes.Count == 0) return (bodyNode.InnerText, title);
-
+            var contentNodes = contentRoot.SelectNodes(".//p|.//h1|.//h2|.//h3|.//h4|.//blockquote");
             var sb = new StringBuilder();
-            foreach (var node in contentNodes) sb.AppendLine(node.InnerText.Trim());
+            if (contentNodes != null)
+                foreach (var node in contentNodes)
+                {
+                    var txt = node.InnerText.Trim();
+                    if (txt.Length > 20) // skip nav fragments / ad snippets
+                        sb.AppendLine(txt);
+                }
 
             var text = System.Net.WebUtility.HtmlDecode(sb.ToString());
             text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+
+            // Paywall / JS-rendered page fallback: if article body is thin, use OG description
+            if (text.Length < 300)
+            {
+                var meta = !string.IsNullOrEmpty(ogDesc) ? ogDesc : metaDesc;
+                if (!string.IsNullOrEmpty(meta))
+                    text = string.IsNullOrEmpty(text) ? meta : $"{text} {meta}";
+            }
+
             return (text, title);
         }
         catch
