@@ -199,12 +199,10 @@ namespace FakeNewsDetector.Services
                              .FirstOrDefault().r
                         ?? votes.OrderBy(v => Math.Abs(v.r.Score - meanScore)).First().r;
 
-            basis.Score = Math.Round(meanScore);
-            basis.Verdict = majorityVerdict;
-            basis.Confidence = agreement; // consensus IS the confidence signal
-            basis.IsEnsemble = true;
-            basis.AgreementScore = agreement;
-            basis.EnsembleVotes = votes.Select(v => new EnsembleVote
+            // Snapshot every model's vote BEFORE mutating basis — basis is one of these
+            // same result references, so overriding its fields first would corrupt its
+            // own vote row (making the aggregate look identical to that model's vote).
+            var voteList = votes.Select(v => new EnsembleVote
             {
                 Provider = v.provider.Name,
                 Model = v.provider.Model,
@@ -212,6 +210,13 @@ namespace FakeNewsDetector.Services
                 Score = Math.Round(v.r.Score),
                 Confidence = v.r.Confidence
             }).ToList();
+
+            basis.Score = Math.Round(meanScore);
+            basis.Verdict = majorityVerdict;
+            basis.Confidence = agreement; // consensus IS the confidence signal
+            basis.IsEnsemble = true;
+            basis.AgreementScore = agreement;
+            basis.EnsembleVotes = voteList;
 
             var agreePct = (int)Math.Round(agreement * 100);
             basis.Explanation = $"{votes.Count} models analysed this; {agreePct}% agreed on \"{majorityVerdict.Replace('_', ' ')}\" " +
