@@ -118,6 +118,17 @@ function renderResult(r) {
         flagsEl.appendChild(li);
     });
 
+    // Link to the full report on the web app. The extension can't write the site's
+    // sessionStorage, so we pass the whole result object through the URL hash; results.html
+    // reads #report=<encoded JSON> and renders it.
     const reportLink = document.getElementById('open-report');
-    if (reportLink) { reportLink.href = APP_URL; reportLink.style.display = 'inline-block'; }
+    if (reportLink) {
+        try {
+            const encoded = encodeURIComponent(JSON.stringify(r));
+            reportLink.href = `${APP_URL}/results.html#report=${encoded}`;
+        } catch (e) {
+            reportLink.href = APP_URL;
+        }
+        reportLink.style.display = 'inline-block';
+    }
 }

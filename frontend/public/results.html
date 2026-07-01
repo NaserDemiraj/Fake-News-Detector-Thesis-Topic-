@@ -575,7 +575,22 @@
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const analysisData = sessionStorage.getItem('analysisResult');
+        let analysisData = sessionStorage.getItem('analysisResult');
+
+        // Opened from the browser extension: the full report is passed in the URL hash
+        // (#report=<encoded JSON>) because the extension can't write the site's sessionStorage.
+        if (window.location.hash.startsWith('#report=')) {
+            try {
+                const parsed = JSON.parse(decodeURIComponent(window.location.hash.slice('#report='.length)));
+                analysisData = JSON.stringify(parsed);
+                sessionStorage.setItem('analysisResult', analysisData);
+                sessionStorage.setItem('analysisId', parsed.analysisId || ('EXT-' + Date.now().toString(36).toUpperCase()));
+                sessionStorage.setItem('analysisSaved', 'true');
+                // Clean the hash so a refresh doesn't re-parse a stale URL.
+                history.replaceState(null, '', window.location.pathname);
+            } catch (e) { /* malformed — fall through to the redirect below */ }
+        }
+
         if (!analysisData) { window.location.href = '/'; return; }
 
         const result = JSON.parse(analysisData);
