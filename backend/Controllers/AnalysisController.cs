@@ -421,8 +421,12 @@ namespace FakeNewsDetector.Controllers
                 if (analysis == null)
                     return NotFound(new { detail = "Analysis not found or not publicly shared." });
 
+                // Deserialize into the typed model (case-insensitive: ResultJson is stored
+                // with PascalCase keys) so ASP.NET re-serializes it with the API's camelCase
+                // policy — otherwise the shared page reads camelCase and sees no fields.
                 var result = analysis.ResultJson != null
-                    ? JsonSerializer.Deserialize<object>(analysis.ResultJson)
+                    ? JsonSerializer.Deserialize<AnalysisResult>(analysis.ResultJson,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     : null;
 
                 return Ok(new
