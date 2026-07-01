@@ -44,7 +44,9 @@ import pandas as pd
 
 random.seed(42)
 
-API_URL = "http://localhost:5000/api/Analysis"
+# Defaults to the local backend; set INJECTION_API_URL to test a deployed instance,
+# e.g. https://naserd-fake-news-backend.hf.space/api/Analysis
+API_URL = os.environ.get("INJECTION_API_URL", "http://localhost:5000/api/Analysis")
 
 try:
     import matplotlib.pyplot as plt
