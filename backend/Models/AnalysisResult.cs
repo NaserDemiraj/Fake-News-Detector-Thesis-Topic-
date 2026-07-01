@@ -8,6 +8,9 @@ namespace FakeNewsDetector.Models
         public bool IsRejected { get; set; } = false; // true when content failed pre-filter (too short / gibberish)
         public double Score { get; set; }
         public double Confidence { get; set; } = 0.8;
+        // Calibrated probability the verdict is correct (Platt-scaled from the raw score).
+        // Raw LLM scores are overconfident; this is the reliability-corrected number. 0 = not set.
+        public double CalibratedConfidence { get; set; } = 0.0;
         public string Verdict { get; set; } = string.Empty; // "likely_true", "likely_fake", "uncertain"
         public string Summary { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;

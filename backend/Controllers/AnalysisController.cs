@@ -39,6 +39,7 @@ namespace FakeNewsDetector.Controllers
         private string? CurrentUserId => User.FindFirst("sub")?.Value;
 
         [HttpPost]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("analyze")]
         public async Task<IActionResult> AnalyzeNews([FromBody] AnalysisRequest request)
         {
             var outcome = await ProcessAnalysisAsync(request.Type, request.Content, request.Ensemble);
@@ -74,6 +75,7 @@ namespace FakeNewsDetector.Controllers
 
         // POST /api/Analysis/batch — analyze many items at once (CSV rows / bulk)
         [HttpPost("batch")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("analyze")]
         public async Task<IActionResult> AnalyzeBatch([FromBody] BatchAnalysisRequest request)
         {
             if (request?.Items == null || request.Items.Count == 0)

@@ -624,12 +624,15 @@
         document.getElementById('verdict-display').textContent = verdictText;
         document.getElementById('explanation').textContent = result.explanation || 'Analysis complete.';
 
-        // Model confidence — how sure the model is about this verdict (separate from the
-        // integrity score, which is about the content). Hidden for mock/placeholder results.
+        // Confidence bar. Prefer the CALIBRATED confidence (Platt-scaled, reliability-
+        // corrected) when available — raw LLM confidence is overconfident. Falls back to
+        // the model's self-reported confidence (e.g. ensemble agreement). Hidden for mocks.
         (function renderConfidence() {
             const block = document.getElementById('confidence-block');
             if (!block) return;
-            const raw = result.confidence;
+            const calibrated = result.calibratedConfidence;
+            const useCalibrated = !result.isEnsemble && calibrated != null && calibrated > 0;
+            const raw = useCalibrated ? calibrated : result.confidence;
             if (result.isMock || raw == null || raw <= 0) { block.classList.add('hidden'); return; }
             const pct = Math.round((raw <= 1 ? raw * 100 : raw));
             const bar = document.getElementById('confidence-bar');
@@ -640,6 +643,7 @@
             if (pct >= 80)      { color = '#22c55e'; label = 'High confidence — strong, consistent signals.'; }
             else if (pct >= 55) { color = '#eab308'; label = 'Moderate confidence — some ambiguity in the signals.'; }
             else                { color = '#f97316'; label = 'Low confidence — treat this verdict with caution.'; }
+            if (useCalibrated) label += ' (calibrated)';
             if (val) val.textContent = pct + '%';
             if (cap) cap.textContent = label;
             block.classList.remove('hidden');

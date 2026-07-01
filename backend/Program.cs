@@ -58,24 +58,46 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Rate limiting: 20 requests per minute — per user ID when authenticated, per IP otherwise
+// Rate limiting: 20 requests per minute — per user ID when authenticated, per IP otherwise.
+// On PaaS hosts (HF Spaces, Render) the app is behind a reverse proxy, so the real client
+// IP is in X-Forwarded-For; RemoteIpAddress would be the proxy (one shared bucket for all).
+static string ClientPartitionKey(HttpContext context)
+{
+    var userId = context.User?.FindFirst("sub")?.Value;
+    if (!string.IsNullOrEmpty(userId)) return "user:" + userId;
+
+    var fwd = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    var ip = !string.IsNullOrWhiteSpace(fwd)
+        ? fwd.Split(',')[0].Trim()                                   // first hop = original client
+        : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    return "ip:" + ip;
+}
+
 builder.Services.AddRateLimiter(options =>
 {
+    // Global: generous cap so normal browsing never trips it.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-    {
-        var userId = context.User?.FindFirst("sub")?.Value;
-        var partitionKey = !string.IsNullOrEmpty(userId)
-            ? "user:" + userId
-            : "ip:" + (context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: partitionKey,
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientPartitionKey(context),
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 20,
+                PermitLimit = 40,
                 Window = TimeSpan.FromMinutes(1)
-            });
-    });
+            }));
+
+    // Stricter policy for the expensive analysis endpoint (drains the LLM quota):
+    // 10 analyses/minute per client. Applied via [EnableRateLimiting("analyze")].
+    options.AddPolicy("analyze", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientPartitionKey(context),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
