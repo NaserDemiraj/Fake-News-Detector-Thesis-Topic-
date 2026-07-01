@@ -41,7 +41,7 @@ namespace FakeNewsDetector.Controllers
         [HttpPost]
         public async Task<IActionResult> AnalyzeNews([FromBody] AnalysisRequest request)
         {
-            var outcome = await ProcessAnalysisAsync(request.Type, request.Content);
+            var outcome = await ProcessAnalysisAsync(request.Type, request.Content, request.Ensemble);
             if (!outcome.Ok)
                 return Problem(title: "Analysis error", detail: outcome.Error, statusCode: outcome.StatusCode);
 
@@ -119,7 +119,7 @@ namespace FakeNewsDetector.Controllers
         }
 
         // Shared analysis pipeline used by both the single and batch endpoints.
-        private async Task<AnalysisOutcome> ProcessAnalysisAsync(string type, string rawContent)
+        private async Task<AnalysisOutcome> ProcessAnalysisAsync(string type, string rawContent, bool ensemble = false)
         {
             var outcome = new AnalysisOutcome { Type = type };
 
@@ -184,9 +184,12 @@ namespace FakeNewsDetector.Controllers
 
             try
             {
-                // Content-hash dedup: if we've seen this exact content before, return cached result
-                // X-Bypass-Cache: 1 skips the lookup (used by the evaluation harness so each prompt variant gets a fresh LLM call)
-                var bypassCache = Request.Headers.TryGetValue("X-Bypass-Cache", out var bypassVal) && bypassVal == "1";
+                // Content-hash dedup: if we've seen this exact content before, return cached result.
+                // X-Bypass-Cache: 1 skips the lookup (used by the evaluation harness so each prompt variant gets a fresh LLM call).
+                // Ensemble requests always bypass the cache — a cached single-model result must
+                // not be served as a consensus, and vice versa.
+                var bypassCache = ensemble
+                    || (Request.Headers.TryGetValue("X-Bypass-Cache", out var bypassVal) && bypassVal == "1");
                 var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
                 SavedAnalysis? cached = null;
                 if (!bypassCache)
@@ -222,13 +225,17 @@ namespace FakeNewsDetector.Controllers
                     }
                     else
                     {
-                        result = await _analyzerService.AnalyzeContentAsync(content, sourceUrl: sourceUrl);
+                        result = ensemble
+                            ? await _analyzerService.AnalyzeContentEnsembleAsync(content, sourceUrl)
+                            : await _analyzerService.AnalyzeContentAsync(content, sourceUrl);
                         analysisId = Guid.NewGuid().ToString();
                     }
                 }
                 else
                 {
-                    result = await _analyzerService.AnalyzeContentAsync(content, sourceUrl: sourceUrl);
+                    result = ensemble
+                        ? await _analyzerService.AnalyzeContentEnsembleAsync(content, sourceUrl)
+                        : await _analyzerService.AnalyzeContentAsync(content, sourceUrl);
                     analysisId = Guid.NewGuid().ToString();
                 }
 

@@ -204,6 +204,16 @@
   </div>
   <p id="confidence-caption" class="text-body-sm text-outline mt-xs"></p>
 </div>
+<!-- Ensemble / consensus panel -->
+<div id="ensemble-block" class="pt-base max-w-md hidden">
+  <div class="flex items-center justify-between mb-xs">
+    <span class="text-label-sm font-label-sm text-outline tracking-widest uppercase flex items-center gap-xs">
+      <span class="material-symbols-outlined text-[16px]">groups</span> Model Consensus
+    </span>
+    <span id="agreement-value" class="text-label-md font-label-md font-bold text-tertiary">—</span>
+  </div>
+  <div id="ensemble-votes" class="flex flex-col gap-xs"></div>
+</div>
 </div>
 <div class="flex justify-center lg:justify-end counter-container">
 <div class="relative w-72 h-72 flex items-center justify-center">
@@ -583,6 +593,34 @@
             if (cap) cap.textContent = label;
             block.classList.remove('hidden');
             if (bar) { bar.style.backgroundColor = color; setTimeout(() => { bar.style.width = pct + '%'; }, 200); }
+        })();
+
+        // Ensemble / consensus — per-model votes + agreement (only in consensus mode)
+        (function renderEnsemble() {
+            const block = document.getElementById('ensemble-block');
+            if (!block) return;
+            const votes = result.ensembleVotes || [];
+            if (!result.isEnsemble || votes.length < 2) { block.classList.add('hidden'); return; }
+            const agreePct = Math.round((result.agreementScore || 0) * 100);
+            const av = document.getElementById('agreement-value');
+            if (av) {
+                av.textContent = agreePct + '% agree';
+                av.style.color = agreePct >= 80 ? '#22c55e' : agreePct >= 60 ? '#eab308' : '#f97316';
+            }
+            const verdictLabel = v => v === 'likely_true' ? 'Trusted' : v === 'likely_fake' ? 'Fake' : 'Uncertain';
+            const verdictColor = v => v === 'likely_true' ? '#22c55e' : v === 'likely_fake' ? '#ef4444' : '#eab308';
+            const wrap = document.getElementById('ensemble-votes');
+            if (wrap) {
+                wrap.innerHTML = votes.map(v => `
+                    <div class="flex items-center justify-between bg-surface-container-low rounded-lg px-md py-xs border border-outline-variant/20">
+                        <span class="text-body-sm text-on-surface-variant font-mono">${(v.provider||'').replace(/</g,'&lt;')}</span>
+                        <div class="flex items-center gap-sm">
+                            <span class="text-body-sm font-bold" style="color:${verdictColor(v.verdict)}">${verdictLabel(v.verdict)}</span>
+                            <span class="text-label-sm text-outline w-10 text-right">${Math.round(v.score)}%</span>
+                        </div>
+                    </div>`).join('');
+            }
+            block.classList.remove('hidden');
         })();
 
         // Language badge — always shown; highlighted for non-English

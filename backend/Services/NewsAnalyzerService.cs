@@ -93,57 +93,10 @@ namespace FakeNewsDetector.Services
         {
             _logger.LogInformation("Analyzing content, length: {Length}, source: {Source}", content.Length, sourceUrl ?? "none");
 
-            var words = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length < 5)
-            {
-                _logger.LogWarning("Content too short ({Words} words) — returning uncertain", words.Length);
-                return UncertainResult("Content is too short to assess reliably. Please provide at least a sentence or two.", rejected: true);
-            }
+            var prefilter = PreFilterContent(content);
+            if (prefilter != null) return prefilter;
 
-            // Reject gibberish: require at least 3 words that look like real words
-            // (contain a vowel, mostly letters, length 2–25). Catches random strings, symbols, codes.
-            static bool IsRealWord(string w) =>
-                w.Length >= 2 && w.Length <= 25 &&
-                w.Any(c => "aeiouAEIOU".Contains(c)) &&
-                w.Count(char.IsLetter) >= w.Length * 0.6;
-
-            var realWordCount = words.Count(IsRealWord);
-            if (realWordCount < 3)
-            {
-                _logger.LogWarning("Content appears to be gibberish ({RealWords}/{Total} real words) — returning uncertain", realWordCount, words.Length);
-                return UncertainResult("This doesn't appear to be readable news content. Please paste an article or headline.", rejected: true);
-            }
-
-            if (_providers.Count == 0)
-            {
-                _logger.LogWarning("No AI providers configured — using mock analysis");
-                return MockAnalysis();
-            }
-
-            // Gather web evidence FIRST, then feed it into the prompt so the model can
-            // actually reason over it (real grounding). The two searches still run
-            // concurrently with each other; we await both before calling the LLM.
-            // Fact-check results go first (they're the strongest signal).
-            var searchQuery = ExtractSearchQuery(content);
-            var tavilyTask = _tavily.IsEnabled
-                ? _tavily.SearchAsync(searchQuery)
-                : Task.FromResult(new List<EvidencePoint>());
-            var factCheckTask = _factCheck.IsEnabled
-                ? _factCheck.SearchAsync(searchQuery)
-                : Task.FromResult(new List<EvidencePoint>());
-
-            List<EvidencePoint> evidence;
-            try
-            {
-                var factCheckEvidence = await factCheckTask;
-                var webEvidence = await tavilyTask;
-                evidence = factCheckEvidence.Concat(webEvidence).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Evidence search failed — proceeding without grounding");
-                evidence = new List<EvidencePoint>();
-            }
+            var evidence = await GatherEvidenceAsync(content);
 
             foreach (var provider in _providers)
             {
@@ -178,6 +131,157 @@ namespace FakeNewsDetector.Services
 
             _logger.LogError("All AI providers failed (rate limit / error) — returning service-unavailable placeholder");
             return ServiceUnavailableResult();
+        }
+
+        // Consensus mode: run every configured provider in parallel and aggregate.
+        public async Task<AnalysisResult> AnalyzeContentEnsembleAsync(string content, string? sourceUrl = null)
+        {
+            _logger.LogInformation("Ensemble analysis, length: {Length}, providers: {Count}", content.Length, _providers.Count);
+
+            var prefilter = PreFilterContent(content);
+            if (prefilter != null) return prefilter;
+
+            // With only one provider there's nothing to reach consensus over — fall back.
+            if (_providers.Count < 2)
+                return await AnalyzeContentAsync(content, sourceUrl);
+
+            var evidence = await GatherEvidenceAsync(content);
+
+            // Query all providers concurrently. Each task is self-contained and never throws.
+            var tasks = _providers.Select(async provider =>
+            {
+                try
+                {
+                    var json = await CallAIWithRetryAsync(content, provider, evidence, sourceUrl);
+                    var r = AnalysisResultParser.Parse(json);
+                    if (!r.Success) return (provider, result: (AnalysisResult?)null);
+                    ApplyVerdictThreshold(r);
+                    return (provider, result: (AnalysisResult?)r);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Ensemble: provider {Provider} failed", provider.Name);
+                    return (provider, result: (AnalysisResult?)null);
+                }
+            });
+
+            var settled = await Task.WhenAll(tasks);
+            var votes = settled.Where(x => x.result != null)
+                               .Select(x => (x.provider, r: x.result!))
+                               .ToList();
+
+            if (votes.Count == 0)
+            {
+                _logger.LogError("Ensemble: all providers failed — returning service-unavailable placeholder");
+                return ServiceUnavailableResult();
+            }
+
+            // Majority verdict; ties broken by the mean score via the standard thresholds.
+            var meanScore = votes.Average(v => v.r.Score);
+            var byVerdict = votes.GroupBy(v => v.r.Verdict)
+                                 .Select(g => new { Verdict = g.Key, Count = g.Count() })
+                                 .OrderByDescending(g => g.Count)
+                                 .ToList();
+            var topCount = byVerdict.First().Count;
+            var tied = byVerdict.Where(g => g.Count == topCount).Select(g => g.Verdict).ToList();
+            string majorityVerdict = tied.Count == 1
+                ? tied[0]
+                : (meanScore >= _trueMinScore ? "likely_true"
+                   : meanScore <= _fakeMaxScore ? "likely_fake" : "uncertain");
+
+            // Agreement = fraction of models sharing the winning verdict.
+            double agreement = (double)votes.Count(v => v.r.Verdict == majorityVerdict) / votes.Count;
+
+            // Base the rich fields on the vote closest to the mean score (most representative),
+            // preferring one whose verdict matches the majority.
+            var basis = votes.Where(v => v.r.Verdict == majorityVerdict)
+                             .OrderBy(v => Math.Abs(v.r.Score - meanScore))
+                             .FirstOrDefault().r
+                        ?? votes.OrderBy(v => Math.Abs(v.r.Score - meanScore)).First().r;
+
+            basis.Score = Math.Round(meanScore);
+            basis.Verdict = majorityVerdict;
+            basis.Confidence = agreement; // consensus IS the confidence signal
+            basis.IsEnsemble = true;
+            basis.AgreementScore = agreement;
+            basis.EnsembleVotes = votes.Select(v => new EnsembleVote
+            {
+                Provider = v.provider.Name,
+                Model = v.provider.Model,
+                Verdict = v.r.Verdict,
+                Score = Math.Round(v.r.Score),
+                Confidence = v.r.Confidence
+            }).ToList();
+
+            var agreePct = (int)Math.Round(agreement * 100);
+            basis.Explanation = $"{votes.Count} models analysed this; {agreePct}% agreed on \"{majorityVerdict.Replace('_', ' ')}\" " +
+                                $"(mean score {basis.Score:0}). " + basis.Explanation;
+
+            if (evidence.Count > 0)
+                basis.EvidencePoints = evidence.Concat(basis.EvidencePoints).ToList();
+
+            _logger.LogInformation("Ensemble complete: {Votes} votes, verdict={Verdict}, mean={Score}, agreement={Agree:P0}",
+                votes.Count, majorityVerdict, basis.Score, agreement);
+            return basis;
+        }
+
+        // Pre-filter: returns a rejection/mock result if the content can't be analysed,
+        // otherwise null (proceed to the LLM). Shared by single + ensemble paths.
+        private AnalysisResult? PreFilterContent(string content)
+        {
+            var words = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length < 5)
+            {
+                _logger.LogWarning("Content too short ({Words} words) — returning uncertain", words.Length);
+                return UncertainResult("Content is too short to assess reliably. Please provide at least a sentence or two.", rejected: true);
+            }
+
+            // Reject gibberish: require at least 3 words that look like real words
+            // (contain a vowel, mostly letters, length 2–25). Catches random strings, symbols, codes.
+            static bool IsRealWord(string w) =>
+                w.Length >= 2 && w.Length <= 25 &&
+                w.Any(c => "aeiouAEIOU".Contains(c)) &&
+                w.Count(char.IsLetter) >= w.Length * 0.6;
+
+            var realWordCount = words.Count(IsRealWord);
+            if (realWordCount < 3)
+            {
+                _logger.LogWarning("Content appears to be gibberish ({RealWords}/{Total} real words) — returning uncertain", realWordCount, words.Length);
+                return UncertainResult("This doesn't appear to be readable news content. Please paste an article or headline.", rejected: true);
+            }
+
+            if (_providers.Count == 0)
+            {
+                _logger.LogWarning("No AI providers configured — using mock analysis");
+                return MockAnalysis();
+            }
+
+            return null;
+        }
+
+        // Gather web evidence FIRST so it can be fed into the prompt (real grounding).
+        // Fact-check + Tavily searches run concurrently; we await both. Never throws.
+        private async Task<List<EvidencePoint>> GatherEvidenceAsync(string content)
+        {
+            var searchQuery = ExtractSearchQuery(content);
+            var tavilyTask = _tavily.IsEnabled
+                ? _tavily.SearchAsync(searchQuery)
+                : Task.FromResult(new List<EvidencePoint>());
+            var factCheckTask = _factCheck.IsEnabled
+                ? _factCheck.SearchAsync(searchQuery)
+                : Task.FromResult(new List<EvidencePoint>());
+
+            try
+            {
+                var factCheckEvidence = await factCheckTask;
+                var webEvidence = await tavilyTask;
+                return factCheckEvidence.Concat(webEvidence).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Evidence search failed — proceeding without grounding");
+                return new List<EvidencePoint>();
+            }
         }
 
         // Returned when the API key(s) ARE configured but every provider failed (almost

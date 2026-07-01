@@ -167,6 +167,10 @@
 <input checked="" class="rounded border-outline text-primary focus:ring-primary bg-transparent" type="checkbox"/>
 <span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Source Logic</span>
 </label>
+<label class="flex items-center gap-xs cursor-pointer group" title="Query 3 AI models and report how strongly they agree. Slower, more robust.">
+<input id="ensemble-toggle" class="rounded border-outline text-tertiary focus:ring-tertiary bg-transparent" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-tertiary transition-colors flex items-center gap-xs"><span class="material-symbols-outlined text-[15px]">groups</span>Consensus (3 AI)</span>
+</label>
 </div>
 <button id="run-analysis-btn" class="bg-tertiary text-on-tertiary px-lg py-sm rounded-xl font-label-md text-label-md font-bold hover:brightness-110 transition-all active:scale-95">
                             RUN ANALYSIS
@@ -820,10 +824,11 @@
                 }
 
                 const type = content.startsWith('http://') || content.startsWith('https://') ? 'url' : 'text';
+                const ensemble = document.getElementById('ensemble-toggle')?.checked === true;
                 const response = await fetch('/api/Analysis', {
                     method: 'POST',
                     headers: authHeaders(),
-                    body: JSON.stringify({ type, content })
+                    body: JSON.stringify({ type, content, ensemble })
                 });
 
                 stepTimers.forEach(clearTimeout);

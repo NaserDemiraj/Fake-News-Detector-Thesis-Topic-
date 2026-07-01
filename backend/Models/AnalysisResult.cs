@@ -23,6 +23,21 @@ namespace FakeNewsDetector.Models
         public List<Claim> Claims { get; set; } = new List<Claim>();
         public List<RiskCategory> RiskCategories { get; set; } = new List<RiskCategory>();
         public string? Reasoning { get; set; }
+
+        // Ensemble / consensus mode: populated when multiple LLMs analyse the same content.
+        public bool IsEnsemble { get; set; } = false;
+        public double AgreementScore { get; set; } = 0.0; // 0-1: fraction of models sharing the majority verdict
+        public List<EnsembleVote> EnsembleVotes { get; set; } = new List<EnsembleVote>();
+    }
+
+    // One model's vote in ensemble/consensus mode.
+    public class EnsembleVote
+    {
+        public string Provider { get; set; } = string.Empty; // "Groq", "Cerebras", "Gemini"
+        public string Model { get; set; } = string.Empty;
+        public string Verdict { get; set; } = string.Empty;
+        public double Score { get; set; }
+        public double Confidence { get; set; }
     }
 
     public class SentenceHighlight
