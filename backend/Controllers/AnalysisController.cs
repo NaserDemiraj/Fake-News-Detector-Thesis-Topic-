@@ -15,6 +15,7 @@ namespace FakeNewsDetector.Controllers
         private readonly INewsAnalyzerService _analyzerService;
         private readonly ISavedAnalysisService _savedAnalysisService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
         private readonly ILogger<AnalysisController> _logger;
 
         private const int MaxContentBytes = 5 * 1024 * 1024;
@@ -24,11 +25,13 @@ namespace FakeNewsDetector.Controllers
             INewsAnalyzerService analyzerService,
             ISavedAnalysisService savedAnalysisService,
             IHttpClientFactory httpClientFactory,
+            IConfiguration config,
             ILogger<AnalysisController> logger)
         {
             _analyzerService = analyzerService;
             _savedAnalysisService = savedAnalysisService;
             _httpClientFactory = httpClientFactory;
+            _config = config;
             _logger = logger;
         }
 
@@ -138,38 +141,32 @@ namespace FakeNewsDetector.Controllers
 
                 sourceUrl = rawContent;
 
-                try
+                // 1. Direct fetch (fast; works for plain static pages).
+                var direct = await FetchDirectAsync(rawContent, uri);
+                content = direct.Text;
+                title = string.IsNullOrEmpty(direct.Title) ? "Article from " + uri.Host : direct.Title;
+
+                // 2. Jina Reader fallback: if the direct fetch failed or returned thin
+                //    content (paywall, bot-block, JS-rendered), route through r.jina.ai,
+                //    which renders the page and bypasses most data-center IP blocks.
+                if (!direct.Ok || content.Length < 200)
                 {
-                    var httpClient = _httpClientFactory.CreateClient();
-                    httpClient.Timeout = FetchTimeout;
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "FakeNewsDetector/1.0");
-
-                    using var response = await httpClient.GetAsync(rawContent, HttpCompletionOption.ResponseHeadersRead);
-
-                    if (!response.IsSuccessStatusCode)
-                        return outcome.Fail($"Failed to fetch URL: HTTP {(int)response.StatusCode}", 400);
-
-                    if (response.Content.Headers.ContentLength > MaxContentBytes)
-                        return outcome.Fail("The page content exceeds the 5 MB limit.", 400);
-
-                    using var stream = await response.Content.ReadAsStreamAsync();
-                    var buffer = new byte[MaxContentBytes];
-                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    var htmlContent = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-                    var extracted = ExtractTextAndTitleFromHtml(htmlContent);
-                    content = extracted.Text;
-                    title = string.IsNullOrEmpty(extracted.Title) ? "Article from " + uri.Host : extracted.Title;
+                    var jina = await FetchViaJinaAsync(rawContent);
+                    if (jina.Ok && jina.Text.Length > content.Length)
+                    {
+                        content = jina.Text;
+                        if (!string.IsNullOrEmpty(jina.Title))
+                            title = jina.Title;
+                        _logger.LogInformation("Jina Reader recovered {Chars} chars for {Url}", jina.Text.Length, rawContent);
+                    }
                 }
-                catch (TaskCanceledException)
-                {
-                    return outcome.Fail("The request to the URL timed out (10s limit).", 408);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching URL: {Url}", rawContent);
-                    return outcome.Fail("Could not retrieve content from the URL.", 400);
-                }
+
+                if (string.IsNullOrWhiteSpace(content))
+                    return outcome.Fail(
+                        direct.TimedOut
+                            ? "The request to the URL timed out."
+                            : "Could not retrieve readable content from the URL. The site may block automated access or require a subscription — try pasting the article text instead.",
+                        direct.TimedOut ? 408 : 400);
             }
             else
             {
@@ -494,6 +491,112 @@ namespace FakeNewsDetector.Controllers
 
         private static (string Text, string Title) ExtractTextAndTitleFromHtml(string html)
             => HtmlExtractor.ExtractTextAndTitle(html);
+
+        // Result of a single fetch attempt.
+        private readonly record struct FetchResult(bool Ok, string Text, string Title, bool TimedOut)
+        {
+            public static FetchResult Fail(bool timedOut = false) => new(false, "", "", timedOut);
+        }
+
+        // Direct HTTP GET + HTML extraction. Never throws — failures come back as Ok=false.
+        private async Task<FetchResult> FetchDirectAsync(string url, Uri uri)
+        {
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.Timeout = FetchTimeout;
+                httpClient.DefaultRequestHeaders.Add("User-Agent",
+                    "Mozilla/5.0 (compatible; FakeNewsDetector/1.0; +https://naserd-fake-news-backend.hf.space)");
+
+                using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Direct fetch of {Url} returned HTTP {Status}", url, (int)response.StatusCode);
+                    return FetchResult.Fail();
+                }
+                if (response.Content.Headers.ContentLength > MaxContentBytes)
+                    return FetchResult.Fail();
+
+                using var stream = await response.Content.ReadAsStreamAsync();
+                var buffer = new byte[MaxContentBytes];
+                var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                var html = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                var extracted = ExtractTextAndTitleFromHtml(html);
+                return new FetchResult(true, extracted.Text, extracted.Title, false);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Direct fetch of {Url} timed out", url);
+                return FetchResult.Fail(timedOut: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex, "Direct fetch of {Url} failed", url);
+                return FetchResult.Fail();
+            }
+        }
+
+        // Jina Reader (r.jina.ai) fallback — renders JS and bypasses most bot blocks.
+        // Free, no key required; an optional Jina:ApiKey raises the rate limit.
+        // Returns clean markdown with a "Title:" / "Markdown Content:" header block we parse off.
+        private async Task<FetchResult> FetchViaJinaAsync(string url)
+        {
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(25); // Jina renders the page — allow longer
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "FakeNewsDetector/1.0");
+
+                var apiKey = _config?["Jina:ApiKey"];
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                    httpClient.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+                using var response = await httpClient.GetAsync("https://r.jina.ai/" + url,
+                    HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Jina Reader returned HTTP {Status} for {Url}", (int)response.StatusCode, url);
+                    return FetchResult.Fail();
+                }
+
+                var raw = await response.Content.ReadAsStringAsync();
+                if (raw.Length > MaxContentBytes) raw = raw[..MaxContentBytes];
+
+                return ParseJinaResponse(raw);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex, "Jina Reader fetch of {Url} failed", url);
+                return FetchResult.Fail();
+            }
+        }
+
+        // Jina's default response is markdown prefixed with metadata lines:
+        //   Title: ...
+        //   URL Source: ...
+        //   Published Time: ...
+        //   Markdown Content:
+        //   <body...>
+        // Pull the title out and return the body as the analysis text.
+        private static FetchResult ParseJinaResponse(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return FetchResult.Fail();
+
+            string title = "";
+            var body = raw;
+
+            var titleMatch = System.Text.RegularExpressions.Regex.Match(raw, @"(?m)^Title:\s*(.+)$");
+            if (titleMatch.Success) title = titleMatch.Groups[1].Value.Trim();
+
+            var marker = raw.IndexOf("Markdown Content:", StringComparison.Ordinal);
+            if (marker >= 0)
+                body = raw[(marker + "Markdown Content:".Length)..];
+
+            body = System.Text.RegularExpressions.Regex.Replace(body, @"\s+", " ").Trim();
+            return string.IsNullOrWhiteSpace(body) ? FetchResult.Fail() : new FetchResult(true, body, title, false);
+        }
     }
 
     public class UpdateAnalysisRequest
