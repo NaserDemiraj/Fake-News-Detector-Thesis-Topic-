@@ -466,6 +466,15 @@ namespace FakeNewsDetector.Services
             sb.AppendLine();
             sb.AppendLine("Now analyze the following content. Detect its language.");
 
+            // The model's training cutoff is in the past, so without this it treats any
+            // legitimately recent article as "a future/impossible event" and flags it fake.
+            // Ground it in the real current date.
+            var today = DateTime.UtcNow;
+            sb.AppendLine($"TODAY'S DATE is {today:yyyy-MM-dd} ({today:MMMM d, yyyy}). " +
+                          "Dates on or before today are in the PAST or PRESENT — do NOT treat a recent " +
+                          "date as a 'future event' or as evidence of fabrication, even if it is later than " +
+                          "your training data. Only a date AFTER today's date is genuinely in the future.");
+
             // Tell the model where this content came from — domain reputation is a strong signal
             if (!string.IsNullOrEmpty(sourceUrl) && Uri.TryCreate(sourceUrl, UriKind.Absolute, out var parsedUri))
             {
