@@ -63,6 +63,7 @@
   <div id="url" class="url">Loading current tab…</div>
 
   <button id="analyze-btn">Analyse this page</button>
+  <button id="analyze-selection-btn" style="background:transparent;color:var(--primary);border:1px solid rgba(171,199,255,.35);margin-top:8px;">Analyse selected text</button>
 
   <div id="loading" class="hidden">
     <div class="spinner"></div>
@@ -76,8 +77,10 @@
       <span id="score" class="score">—</span>
       <span class="score-label">Credibility</span>
     </div>
+    <div id="confidence" class="score-label" style="margin:-4px 0 10px;color:var(--outline);"></div>
     <p id="explanation" class="explanation"></p>
     <ul id="flags" class="flags"></ul>
+    <a id="open-report" href="#" target="_blank" style="display:none;font-size:11px;color:var(--tertiary);text-decoration:none;">Open full report on VerifyNews →</a>
   </div>
 
   <div id="error" class="error-box hidden"></div>

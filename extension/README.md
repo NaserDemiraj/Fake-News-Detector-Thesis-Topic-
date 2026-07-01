@@ -1,15 +1,18 @@
 # VerifyNews Browser Extension
 
-A Manifest V3 browser extension that analyses the current page for fake news, bias, and
-misinformation with one click, using the VerifyNews backend.
+A Manifest V3 browser extension that analyses the current page **or any selected text** for
+fake news, bias, and misinformation with one click, using the VerifyNews backend.
 
-## Loading it in Chrome / Edge (development)
+By default it talks to the **live deployed backend** (`https://naserd-fake-news-backend.hf.space`),
+so it works out of the box — no local server needed.
 
-1. Make sure the backend is running (`dotnet run` in `/backend`, listening on `http://localhost:5000`).
-2. Open `chrome://extensions` (or `edge://extensions`).
-3. Toggle **Developer mode** on (top-right).
-4. Click **Load unpacked** and select this `extension/` folder.
-5. Pin the VerifyNews icon, open any article, and click **Analyse this page**.
+## Loading it in Chrome / Edge
+
+1. Open `chrome://extensions` (or `edge://extensions`).
+2. Toggle **Developer mode** on (top-right).
+3. Click **Load unpacked** and select this `extension/` folder.
+4. Pin the VerifyNews icon, open any article, and click **Analyse this page** — or highlight
+   a paragraph and click **Analyse selected text**.
 
 ## Loading it in Firefox
 
@@ -21,12 +24,13 @@ misinformation with one click, using the VerifyNews backend.
 Edit [`config.js`](config.js):
 
 ```js
-const BACKEND_URL = 'http://localhost:5000'; // your API
-const APP_URL = 'http://localhost:3000';     // your web app
+const BACKEND_URL = 'https://naserd-fake-news-backend.hf.space'; // live API (default)
+const APP_URL = 'https://fake-news-detector-thesis-topic.vercel.app';
 ```
 
-When pointing at a deployed backend, also add that host to `host_permissions` in
-[`manifest.json`](manifest.json), e.g. `"https://api.verifynews.app/*"`.
+To run against a local backend instead, set these to `http://localhost:5000` /
+`http://localhost:3000` and add `"http://localhost:5000/*"` to `host_permissions` in
+[`manifest.json`](manifest.json).
 
 The backend already permits `chrome-extension://` and `moz-extension://` origins via CORS
 (authentication is Bearer-token based, so this is safe).
