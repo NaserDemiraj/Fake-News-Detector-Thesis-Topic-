@@ -39,12 +39,20 @@ public static class HtmlExtractor
                 foreach (var node in contentNodes)
                 {
                     var txt = node.InnerText.Trim();
-                    if (txt.Length > 20) // skip nav fragments / ad snippets
+                    if (txt.Length > 3) // skip blank / single-char fragments
                         sb.AppendLine(txt);
                 }
 
             var text = System.Net.WebUtility.HtmlDecode(sb.ToString());
             text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+
+            // If no <p>/<h*> children were found (e.g. <article>bare text</article>),
+            // fall back to the content root's own inner text.
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                text = System.Net.WebUtility.HtmlDecode(contentRoot.InnerText);
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+            }
 
             // Paywall / JS-rendered page fallback: if article body is thin, use OG description
             if (text.Length < 300)
