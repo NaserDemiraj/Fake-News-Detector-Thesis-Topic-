@@ -516,12 +516,63 @@
 <span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">© <script>document.write(new Date().getFullYear())</script> Forensic Intelligence Unit.</span>
 </div>
 <div class="flex gap-md">
-<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('Security documentation is available in the project repository README.\n\nOllama: http://localhost:11434\nBackend API: http://localhost:5000/swagger')">Security Docs</a>
-<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('Legal Notice: Forensic reports are for informational and research purposes only.\nThey do not constitute professional legal advice or evidence.')">Legal Forensic</a>
-<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="alert('API Endpoint: POST http://localhost:5000/api/Analysis\n\nRecent analyses: GET /api/Analysis/recent\nSwagger UI: http://localhost:5000/swagger')">API Endpoint</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="showInfoModal('security')">Security Docs</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="showInfoModal('legal')">Legal Forensic</a>
+<a class="font-label-sm text-label-sm text-outline hover:text-tertiary transition-colors cursor-pointer" onclick="showInfoModal('api')">API Endpoint</a>
 </div>
 </div>
 </footer>
+
+<!-- Info Modal (Security / Legal / API) -->
+<div id="info-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onclick="if(event.target===this)closeInfoModal()">
+  <div class="glass-card rounded-2xl p-lg max-w-md w-full relative border border-outline-variant/20">
+    <button onclick="closeInfoModal()" class="absolute top-md right-md text-outline hover:text-on-surface transition-colors">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <h2 id="info-modal-title" class="font-headline-lg text-headline-lg text-white mb-md"></h2>
+    <div id="info-modal-body" class="text-on-surface-variant font-body-md text-body-md leading-relaxed space-y-sm"></div>
+    <button onclick="closeInfoModal()" class="mt-lg w-full border border-outline-variant/30 py-xs rounded-lg text-on-surface-variant font-label-md text-label-md hover:bg-surface-container transition-all">Close</button>
+  </div>
+</div>
+
+<script>
+    // Footer info modals — accurate, live-deployment content (no localhost).
+    const API_BASE = 'https://naserd-fake-news-backend.hf.space';
+    const REPO_URL = 'https://github.com/NaserDemiraj/Fake-News-Detector-Thesis-Topic-';
+    const infoContent = {
+        security: {
+            title: 'Security',
+            body: `<p>All traffic is served over HTTPS. Authentication uses JSON Web Tokens (60-minute access token + rotating 30-day refresh token).</p>
+                   <p>Submitted content is analysed transiently and deduplicated by SHA-256 content hash; passwords are stored salted and hashed.</p>
+                   <p><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Technical documentation on GitHub ↗</a></p>`
+        },
+        legal: {
+            title: 'Legal Notice',
+            body: `<p>Forensic reports are provided for informational and research purposes only.</p>
+                   <p>They do not constitute professional legal advice or admissible evidence. Verdicts are AI-generated probabilistic assessments and may contain errors — always corroborate with primary sources.</p>`
+        },
+        api: {
+            title: 'API Endpoint',
+            body: `<p>Analyse content:</p>
+                   <p class="font-mono text-sm bg-surface-container-low rounded-lg p-sm break-all">POST ${API_BASE}/api/Analysis<br>{ "type": "text"|"url", "content": "…", "ensemble": false }</p>
+                   <p>Recent analyses (auth required): <span class="font-mono text-sm">GET /api/Analysis/recent</span></p>
+                   <p><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Full API reference ↗</a></p>`
+        }
+    };
+    function showInfoModal(type) {
+        const info = infoContent[type];
+        if (!info) return;
+        document.getElementById('info-modal-title').textContent = info.title;
+        document.getElementById('info-modal-body').innerHTML = info.body;
+        document.getElementById('info-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeInfoModal() {
+        document.getElementById('info-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeInfoModal(); });
+</script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const analysisData = sessionStorage.getItem('analysisResult');

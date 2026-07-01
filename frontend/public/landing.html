@@ -593,8 +593,8 @@
         const infoContent = {
             privacy: { title: 'Privacy Policy', body: 'TruthLens AI does not retain submitted article content beyond the analysis session. Analysis metadata may be stored anonymously for model improvement. We do not sell or share personal data with third parties.' },
             terms: { title: 'Terms of Service', body: 'TruthLens AI is provided for informational and research purposes. Results should be treated as guidance, not definitive fact. By using this service you agree not to submit personally identifiable or sensitive personal data.' },
-            status: { title: 'API Status', body: 'AI Engine (Ollama): Operational\nAnalysis API: http://localhost:5000\nDatabase: Requires PostgreSQL configuration\n\nUptime (30-day): 99.2%\nAvg Response Time: 2–15s (Ollama llama3.2)' },
-            support: { title: 'Support', body: 'For assistance, open an issue on the project GitHub repository.\n\nCommon fixes:\n• Ensure Ollama is running: ollama serve\n• Ensure backend is running: dotnet run\n• Ensure frontend is running: npm run dev\n\nResponse time: Within 24–48 hours on business days.' }
+            status: { title: 'API Status', body: 'AI Engine: Operational (Groq → Cerebras → Gemini fallback)\nAnalysis API: https://naserd-fake-news-backend.hf.space\nDatabase: Neon PostgreSQL — Operational\n\nAvg Response Time: 2–8s (llama-3.3-70b)\nNote: free-tier models have a daily quota; if all are exhausted the app shows a "temporarily busy" notice.' },
+            support: { title: 'Support', body: 'For assistance, open an issue on the project GitHub repository:\nhttps://github.com/NaserDemiraj/Fake-News-Detector-Thesis-Topic-\n\nThis is an academic thesis project demonstrating cross-dataset fake-news detection with LLMs and web grounding.\n\nResponse time: Within 24–48 hours on business days.' }
         };
 
         function showInfoModal(type) {
