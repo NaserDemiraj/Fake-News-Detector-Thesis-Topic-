@@ -191,6 +191,19 @@
 <p id="explanation" class="text-on-surface-variant font-body-lg text-body-lg max-w-xl leading-relaxed">
                 Loading analysis results...
             </p>
+<!-- Model confidence -->
+<div id="confidence-block" class="pt-base max-w-md hidden">
+  <div class="flex items-center justify-between mb-xs">
+    <span class="text-label-sm font-label-sm text-outline tracking-widest uppercase flex items-center gap-xs">
+      <span class="material-symbols-outlined text-[16px]">psychology</span> Model Confidence
+    </span>
+    <span id="confidence-value" class="text-label-md font-label-md font-bold text-on-surface">—</span>
+  </div>
+  <div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+    <div id="confidence-bar" class="h-full rounded-full transition-all duration-1000" style="width:0%"></div>
+  </div>
+  <p id="confidence-caption" class="text-body-sm text-outline mt-xs"></p>
+</div>
 </div>
 <div class="flex justify-center lg:justify-end counter-container">
 <div class="relative w-72 h-72 flex items-center justify-center">
@@ -549,6 +562,28 @@
                             result.verdict === 'likely_fake' ? 'Potentially Fake' : 'Uncertain';
         document.getElementById('verdict-display').textContent = verdictText;
         document.getElementById('explanation').textContent = result.explanation || 'Analysis complete.';
+
+        // Model confidence — how sure the model is about this verdict (separate from the
+        // integrity score, which is about the content). Hidden for mock/placeholder results.
+        (function renderConfidence() {
+            const block = document.getElementById('confidence-block');
+            if (!block) return;
+            const raw = result.confidence;
+            if (result.isMock || raw == null || raw <= 0) { block.classList.add('hidden'); return; }
+            const pct = Math.round((raw <= 1 ? raw * 100 : raw));
+            const bar = document.getElementById('confidence-bar');
+            const val = document.getElementById('confidence-value');
+            const cap = document.getElementById('confidence-caption');
+            // Colour + wording by confidence tier
+            let color, label;
+            if (pct >= 80)      { color = '#22c55e'; label = 'High confidence — strong, consistent signals.'; }
+            else if (pct >= 55) { color = '#eab308'; label = 'Moderate confidence — some ambiguity in the signals.'; }
+            else                { color = '#f97316'; label = 'Low confidence — treat this verdict with caution.'; }
+            if (val) val.textContent = pct + '%';
+            if (cap) cap.textContent = label;
+            block.classList.remove('hidden');
+            if (bar) { bar.style.backgroundColor = color; setTimeout(() => { bar.style.width = pct + '%'; }, 200); }
+        })();
 
         // Language badge — always shown; highlighted for non-English
         const lang = (result.language || 'en').toLowerCase();
