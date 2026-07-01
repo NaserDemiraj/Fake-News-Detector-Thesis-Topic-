@@ -241,42 +241,55 @@ namespace FakeNewsDetector.Controllers
 
                 var truncatedContent = rawContent.Length > 500 ? rawContent.Substring(0, 500) : rawContent;
 
-                var savedAnalysis = new SavedAnalysis
-                {
-                    Id = analysisId,
-                    Title = title,
-                    Url = sourceUrl,
-                    ContentType = type,
-                    Content = truncatedContent,
-                    Score = result.Score,
-                    Verdict = result.Verdict,
-                    Date = DateTime.UtcNow,
-                    ResultJson = JsonSerializer.Serialize(result),
-                    IsFavorite = false,
-                    Notes = string.Empty,
-                    UserId = CurrentUserId,
-                    ContentHash = contentHash
-                };
-
                 // Never persist failed or placeholder results (parse error, rate-limit mock) —
                 // caching a one-off failure would serve it forever for that content.
                 bool resultIsReal = result.Success && !result.IsMock && !result.IsServiceUnavailable;
 
-                // Save when: (a) not cached at all, OR (b) cached but under a different user —
-                // so the current logged-in user always gets their own record in history.
-                bool needsSave = resultIsReal
-                    && (!fromCache || (CurrentUserId != null && cached?.UserId != CurrentUserId));
+                // Save decision is based on whether THIS user already has their own row for
+                // this content — NOT on the global content-hash cache. This makes delete +
+                // re-analyse always re-save, and ensures the returned analysisId points at a
+                // record the user owns (so notes/favourites PATCH the right row).
+                SavedAnalysis? userOwn = null;
+                if (CurrentUserId != null && !bypassCache && resultIsReal)
+                {
+                    try { userOwn = await _savedAnalysisService.GetByContentHashForUserAsync(contentHash, CurrentUserId); }
+                    catch { /* non-critical — fall through to saving a fresh row */ }
+                }
+
+                bool needsSave;
+                if (CurrentUserId != null)
+                {
+                    // Logged in: save iff the user has no row of their own yet.
+                    needsSave = resultIsReal && userOwn == null;
+                    if (userOwn != null) analysisId = userOwn.Id; // reuse their existing record
+                }
+                else
+                {
+                    // Anonymous: keep the old behaviour (save only on a genuine cache miss).
+                    needsSave = resultIsReal && !fromCache;
+                }
 
                 var saved = true;
                 if (needsSave)
                 {
-                    // For cross-user cache hits, generate a fresh ID for this user's record
-                    // and update analysisId so the frontend gets the correct record ID.
-                    if (fromCache && CurrentUserId != null)
+                    // Always a fresh row/id for a new save.
+                    analysisId = Guid.NewGuid().ToString();
+                    var savedAnalysis = new SavedAnalysis
                     {
-                        savedAnalysis.Id = Guid.NewGuid().ToString();
-                        analysisId = savedAnalysis.Id;
-                    }
+                        Id = analysisId,
+                        Title = title,
+                        Url = sourceUrl,
+                        ContentType = type,
+                        Content = truncatedContent,
+                        Score = result.Score,
+                        Verdict = result.Verdict,
+                        Date = DateTime.UtcNow,
+                        ResultJson = JsonSerializer.Serialize(result),
+                        IsFavorite = false,
+                        Notes = string.Empty,
+                        UserId = CurrentUserId,
+                        ContentHash = contentHash
+                    };
 
                     try { await _savedAnalysisService.SaveAnalysisAsync(savedAnalysis); }
                     catch (Exception dbEx)
@@ -286,9 +299,8 @@ namespace FakeNewsDetector.Controllers
                     }
                 }
 
-                // Tell the frontend whether the record was saved under the user's account.
-                // If savedForUser=false the record exists but won't appear in their history.
-                var savedForUser = needsSave && saved && CurrentUserId != null;
+                // The user has this in their history if we just saved it, or if they already owned it.
+                var savedForUser = CurrentUserId != null && resultIsReal && saved && (needsSave || userOwn != null);
 
                 outcome.Ok = true;
                 outcome.Result = result;

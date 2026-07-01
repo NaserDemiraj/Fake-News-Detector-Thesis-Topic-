@@ -95,6 +95,18 @@ namespace FakeNewsDetector.Services
             return MapRows(rows).FirstOrDefault();
         }
 
+        // The current user's OWN saved row for this content (if any). Used to decide
+        // whether to create a per-user history record — independent of the global cache.
+        public async Task<SavedAnalysis?> GetByContentHashForUserAsync(string hash, string userId)
+        {
+            var rows = await _neon.QueryAsync(
+                $@"SELECT {AllColumns} FROM ""SavedAnalyses""
+                   WHERE ""ContentHash"" = $1 AND ""UserId"" = $2
+                   ORDER BY ""Date"" DESC LIMIT 1",
+                hash, userId);
+            return MapRows(rows).FirstOrDefault();
+        }
+
         public async Task<SavedAnalysis?> GetPublicAnalysisAsync(string id)
         {
             var rows = await _neon.QueryAsync(

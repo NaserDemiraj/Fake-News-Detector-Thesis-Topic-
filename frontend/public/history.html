@@ -122,6 +122,7 @@
     </div>
     <div class="flex gap-xs">
       <button class="filter-btn active border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="all">All</button>
+      <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant flex items-center gap-xs" data-filter="favorites"><span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1">star</span>Favorites</button>
       <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="likely_true">True</button>
       <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="likely_fake">Fake</button>
       <button class="filter-btn border border-outline-variant/30 rounded-xl px-md py-xs font-label-md text-label-md text-on-surface-variant" data-filter="uncertain">Uncertain</button>
@@ -282,7 +283,9 @@ function renderRecords(records) {
     list.classList.add('hidden');
     empty.classList.remove('hidden');
     document.getElementById('empty-message').textContent =
-      activeFilter === 'all' ? 'No analyses yet — run one from the main page' : 'No analyses match this filter';
+      activeFilter === 'all' ? 'No analyses yet — run one from the main page'
+      : activeFilter === 'favorites' ? 'No favorites yet — tap the ☆ on any analysis to save it here'
+      : 'No analyses match this filter';
     countEl.textContent = '';
     return;
   }
@@ -299,12 +302,19 @@ function renderRecords(records) {
       ? (r.title || 'Untitled').slice(0, 52) + '…'
       : (r.title || 'Untitled');
     const domain = r.url ? (() => { try { return new URL(r.url).hostname; } catch { return ''; } })() : '';
-    return `<div class="row-enter grid grid-cols-1 md:grid-cols-[1fr_90px_100px_130px_44px_44px] gap-md px-md py-sm items-center hover:bg-surface-container/40 transition-colors group" style="animation-delay:${Math.min(i * 30, 300)}ms">
+    const star = r.isFavorite
+      ? '<span class="material-symbols-outlined text-[15px] text-yellow-400 flex-shrink-0" style="font-variation-settings:\'FILL\' 1">star</span>'
+      : '';
+    const noteLine = r.notes
+      ? `<p class="text-[11px] text-primary/80 truncate flex items-center gap-xs mt-0.5"><span class="material-symbols-outlined text-[13px] flex-shrink-0">sticky_note_2</span>${escHtml(r.notes)}</p>`
+      : '';
+    return `<div class="row-enter grid grid-cols-1 md:grid-cols-[1fr_90px_100px_130px_44px_44px_44px] gap-md px-md py-sm items-center hover:bg-surface-container/40 transition-colors group" style="animation-delay:${Math.min(i * 30, 300)}ms">
       <div class="flex items-center gap-sm min-w-0">
         <span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0">${typeIcon(r.contentType)}</span>
         <div class="min-w-0">
-          <p class="text-on-surface font-label-md text-label-md truncate">${shortTitle}</p>
+          <p class="text-on-surface font-label-md text-label-md truncate flex items-center gap-xs">${star}<span class="truncate">${escHtml(shortTitle)}</span></p>
           ${domain ? `<p class="text-[11px] text-outline truncate font-mono">${domain}</p>` : ''}
+          ${noteLine}
         </div>
       </div>
       <div class="flex items-center justify-start md:justify-center gap-xs">
@@ -316,6 +326,10 @@ function renderRecords(records) {
       <div class="text-[12px] text-outline leading-tight">
         <div>${r.formattedDate || r.relativeDate || '—'}</div>
       </div>
+      <button onclick="toggleFavorite('${r.id}', ${r.isFavorite ? 'false' : 'true'})" title="${r.isFavorite ? 'Remove from favorites' : 'Add to favorites'}"
+        class="btn-ghost rounded-lg p-xs transition-colors flex-shrink-0 ${r.isFavorite ? 'text-yellow-400' : 'text-on-surface-variant hover:text-yellow-400'}">
+        <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' ${r.isFavorite ? 1 : 0}">star</span>
+      </button>
       <button onclick="viewReport('${r.id}')" title="View report"
         class="btn-ghost rounded-lg p-xs text-on-surface-variant hover:text-primary transition-colors flex-shrink-0">
         <span class="material-symbols-outlined text-[18px]">open_in_new</span>
@@ -331,7 +345,9 @@ function renderRecords(records) {
 function applyFilters() {
   const query = document.getElementById('search-input').value.toLowerCase().trim();
   filtered = allRecords.filter(r => {
-    const matchFilter = activeFilter === 'all' || r.verdict === activeFilter;
+    const matchFilter = activeFilter === 'all' ? true
+      : activeFilter === 'favorites' ? r.isFavorite === true
+      : r.verdict === activeFilter;
     const matchSearch = !query ||
       (r.title || '').toLowerCase().includes(query) ||
       (r.url || '').toLowerCase().includes(query) ||
@@ -589,6 +605,25 @@ async function confirmDelete() {
     }
   } catch (e) {
     alert('Delete failed. Check that the backend is running.');
+  }
+}
+
+// Toggle favourite from the history list. Sends the record's existing notes so the
+// PATCH (which sets IsFavorite + Notes together) doesn't wipe the note.
+async function toggleFavorite(id, makeFav) {
+  const rec = allRecords.find(r => r.id === id);
+  try {
+    const res = await authFetch('/api/Analysis/' + id, {
+      method: 'PATCH',
+      body: JSON.stringify({ isFavorite: makeFav, notes: rec?.notes || '' })
+    });
+    if (res.ok || res.status === 204) {
+      if (rec) rec.isFavorite = makeFav;
+      updateStats(allRecords);
+      applyFilters();
+    }
+  } catch (e) {
+    alert('Could not update favourite. Check that the backend is running.');
   }
 }
 

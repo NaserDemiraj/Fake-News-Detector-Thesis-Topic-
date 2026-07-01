@@ -11,6 +11,7 @@ namespace FakeNewsDetector.Services
         Task UpdateAnalysisAsync(string id, bool isFavorite, string notes, string userId);
         Task DeleteAnalysisAsync(string id, string userId);
         Task<SavedAnalysis?> GetByContentHashAsync(string hash);
+        Task<SavedAnalysis?> GetByContentHashForUserAsync(string hash, string userId);
         Task<SavedAnalysis?> GetPublicAnalysisAsync(string id);
         Task SetPublicAsync(string id, bool isPublic, string userId);
         Task<DomainStats> GetDomainStatsAsync(string host);
