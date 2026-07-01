@@ -338,6 +338,7 @@ namespace FakeNewsDetector.Services
             sb.AppendLine($"CONTENT: {truncated}");
             sb.AppendLine();
             sb.AppendLine("Rules:");
+            sb.AppendLine("- score: use the FULL 0-100 range. Absurd, physically impossible, or long-debunked claims (e.g. flat earth, moon made of cheese, vaccines contain microchips) → 0-5. Fabricated but plausible-sounding claims → 10-35. Genuinely undetermined → 40-70. Credible, well-sourced reporting → 75-100.");
             sb.AppendLine("- reasoning: fill this FIRST, before deciding score/verdict. Identify the main factual claims and check them against any WEB EVIDENCE. A professional tone alone does not prove an EXTRAORDINARY claim — but routine, well-sourced reporting can score high (likely_true) even without external corroboration.");
             sb.AppendLine("- highlighted_sentences: quote ≤3 verbatim phrases (≤120 chars each) from CONTENT that directly triggered a red flag.");
             sb.AppendLine("- language: ISO 639-1 code (e.g. \"en\", \"sq\", \"de\").");
