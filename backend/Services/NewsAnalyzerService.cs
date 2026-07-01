@@ -280,7 +280,23 @@ namespace FakeNewsDetector.Services
             {
                 var factCheckEvidence = await factCheckTask;
                 var webEvidence = await tavilyTask;
-                return factCheckEvidence.Concat(webEvidence).ToList();
+
+                // Deduplicate by text — different URLs often scrape the same boilerplate
+                // (e.g. an author bio repeated across profile pages). Keep the first
+                // occurrence so the same snippet doesn't show up as two evidence points.
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var deduped = new List<EvidencePoint>();
+                foreach (var e in factCheckEvidence.Concat(webEvidence))
+                {
+                    // Key on a normalised prefix so near-identical snippets that differ only
+                    // in their trailing truncation still collapse to one.
+                    var text = (e.Text ?? "").Trim();
+                    var key = new string(text.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+                    if (key.Length > 60) key = key[..60];
+                    if (key.Length > 0 && seen.Add(key))
+                        deduped.Add(e);
+                }
+                return deduped;
             }
             catch (Exception ex)
             {
