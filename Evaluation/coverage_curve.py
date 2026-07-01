@@ -92,4 +92,5 @@ if HAS_PLOT:
     out = "coverage_curve.png"
     plt.savefig(out, dpi=150)
     print(f"\nSaved: {out}")
-    plt.show()
+    if plt.get_backend().lower() != "agg":
+        plt.show()

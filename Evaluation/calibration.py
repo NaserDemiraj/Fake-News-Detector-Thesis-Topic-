@@ -230,4 +230,5 @@ ax_hist.tick_params(axis="x", labelsize=9)
 out = "calibration_platt.png" if do_platt else "calibration.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 print(f"\nSaved: {out}")
-plt.show()
+if plt.get_backend().lower() != "agg":
+    plt.show()
